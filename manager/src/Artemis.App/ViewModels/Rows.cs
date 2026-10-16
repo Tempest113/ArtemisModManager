@@ -1,5 +1,6 @@
 using System.Windows.Media;
 using Artemis.App.Services;
+using Artemis.Core.Achievements;
 using Artemis.Core.Game;
 using Artemis.Core.Mods;
 using Artemis.Core.Playsets;
@@ -33,16 +34,11 @@ public abstract class ModRowBase(MainViewModel owner, ModInfo? mod, string key, 
     public bool PluginWarn => PluginMark?.Warn == true;
     public string PluginTip => PluginMark?.Tip ?? "";
 
-    // Achievements: a trophy when the mod adds or changes no file the game's checksum covers, a broken one when it does, nothing until it has been looked at.
-    private IReadOnlyList<string>? ChecksumChanges => mod is null ? null : owner.ChecksumChangesFor(mod.Key);
-    public bool AchievementOk => ChecksumChanges is { Count: 0 };
-    public bool AchievementBroken => ChecksumChanges is { Count: > 0 };
-    public string AchievementTip => ChecksumChanges switch
-    {
-        null => "",
-        { Count: 0 } => "Adds or changes no file the game's checksum covers, so achievements stay on.",
-        var files => $"Adds or changes {files.Count:N0} file{(files.Count == 1 ? "" : "s")} the game's checksum covers, such as {files[0]}. Achievements turn off.",
-    };
+    // Achievements: a trophy when the mod leaves them on, a broken one when it turns them off (files the checksum covers, or a plugin that counts), nothing until it has been looked at.
+    private AchievementVerdict Achievement => mod is null ? new AchievementVerdict(AchievementState.Unknown, "") : owner.AchievementFor(mod);
+    public bool AchievementOk => Achievement.State == AchievementState.On;
+    public bool AchievementBroken => Achievement.State == AchievementState.Off;
+    public string AchievementTip => Achievement.Tip;
 
     public void RefreshAchievement()
     {
@@ -65,6 +61,7 @@ public abstract class ModRowBase(MainViewModel owner, ModInfo? mod, string key, 
         OnPropertyChanged(nameof(HasNote));
         OnPropertyChanged(nameof(Change));
         OnPropertyChanged(nameof(ChangeText));
+        RefreshAchievement();
     }
 
     public virtual bool HasProblem => mod is null || mod.ContentMissing;
@@ -176,6 +173,35 @@ public sealed class LoadOrderRowViewModel(MainViewModel owner, PlaysetMod entry,
     {
         get => _isMatch;
         set => SetProperty(ref _isMatch, value);
+    }
+
+    private bool _isHidden;
+    private int _groupSize;
+
+    /// <summary>The row is in a group whose separator is collapsed, so the list doesn't show it.</summary>
+    public bool IsHidden
+    {
+        get => _isHidden;
+        set => SetProperty(ref _isHidden, value);
+    }
+
+    /// <summary>At a separator: how many mods are in its group.</summary>
+    public int GroupSize
+    {
+        get => _groupSize;
+        set => SetProperty(ref _groupSize, value);
+    }
+
+    /// <summary>At a separator: whether its group is folded away. Kept in the playset.</summary>
+    public bool IsCollapsed
+    {
+        get => entry.Collapsed;
+        set
+        {
+            if (entry.Collapsed == value) return;
+            entry.Collapsed = value;
+            OnPropertyChanged();
+        }
     }
 
     public bool Enabled

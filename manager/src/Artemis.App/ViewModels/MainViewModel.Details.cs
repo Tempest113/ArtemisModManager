@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Artemis.Core.Achievements;
 using Artemis.Core.Index;
 using Artemis.Core.Mods;
 using Artemis.Core.Plugins;
@@ -113,10 +114,9 @@ public sealed partial class MainViewModel
                 var mark = PluginMarkFor(mod)!.Value;
                 DetailLines.Add(new DetailLine("Plugin", mod.Plugin.Manifest is { } pm ? $"{pm.Name} {pm.Version}, {(pm.Tier == PluginTier.Stable ? "stable" : "fragile")}: {mark.Tip}" : mark.Tip, Warn: mark.Warn));
             }
-            if (_checksum is not null && _indexStats.ContainsKey((SourceKind.Mod, mod.Key)))
-                DetailLines.Add(_checkedChanges.TryGetValue(mod.Key, out var changed)
-                    ? new DetailLine("Achievements", $"Turned off: it adds or changes {changed.Count:N0} file{(changed.Count == 1 ? "" : "s")} the game's checksum covers, such as {changed[0]}", Warn: true)
-                    : new DetailLine("Achievements", "Not affected"));
+            var verdict = AchievementFor(mod);
+            if (verdict.State != AchievementState.Unknown)
+                DetailLines.Add(new DetailLine("Achievements", verdict.State == AchievementState.On ? "Not affected" : verdict.Tip, Warn: verdict.State == AchievementState.Off));
             if (_modConflicts.TryGetValue(mod.Key, out var overlaps))
                 DetailLines.Add(new DetailLine("Conflicts", $"{overlaps.Total:N0} with other mods, this mod wins {overlaps.Wins:N0}; see the Conflicts page"));
             if (_indexStats.TryGetValue((SourceKind.Mod, mod.Key), out var indexed))

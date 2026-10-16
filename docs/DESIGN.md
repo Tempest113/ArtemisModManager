@@ -48,8 +48,8 @@ whichever tool started the game (D07). Artemis never needs to be running while t
 - **Playsets (D18):** JSON files owned by the manager; export and import as files; read-only import from the Paradox
   Launcher database and from Irony. Applied at launch. Drift detection if another tool changed `dlc_load.json`.
 - **Launching (D18):** writes `dlc_load.json`, starts `stellaris.exe` directly. Optional launch via Steam/Launcher.
-- **Mod list (D13, D32, D36):** MO2-style separators in the load order (suggested or custom names, visual only, never
-  assigned automatically); no categories or tags. A details drawer per mod. Outdated `supported_version` and a mod loading
+- **Mod list (D13, D32, D36, D60):** MO2-style separators in the load order (suggested or custom names, visual only, never
+  assigned automatically); a separator's group can be folded away and the state is kept with the playset (D60); no categories or tags. A details drawer per mod. Outdated `supported_version` and a mod loading
   above one its descriptor lists (an ordering hint, not a requirement, D36) are flagged on the row. Per-mod notes and "new or updated" markers are built (D37). Later: a per-playset switch for a mod's plugin part.
 - **Discovery and speed (D09):** scan mod folders directly. Persistent per-mod index in a disposable cache (built, D38);
   the window never waits for it, and only changed mods are read again in the background. Irony baseline (author's report): about 10 s to open,
@@ -57,9 +57,10 @@ whichever tool started the game (D07). Artemis never needs to be running while t
   12.7 GB but only about 5,000 text files, and the index lists everything else by size and time only.
 - **Conflicts (D10, built: D39):** whole files, same-named top-level definitions, localisation keys; mod-vs-mod and mod-vs-vanilla;
   says who wins and why. Folder-by-folder override rules follow the community wiki table (not documented by Paradox, may
-  change), as the Stellaris Mod Loader scanner did.
+  change), as the Stellaris Mod Loader scanner did. A top-level word is not always a name (`inline_script`, block types
+  like `weapon_component_template = { key = ... }`, file-local `@variables`): see D59.
 - **Achievement badge (D22):** a mod is achievement-compatible when none of its files match the rules in the game's own
-  `checksum_manifest.txt` (read from the install at runtime). Shown as a trophy (or a cracked one) beside each mod in both lists (D57); a playset is compatible only if every enabled mod is.
+  `checksum_manifest.txt` (read from the install at runtime). A plugin that counts toward the checksum (honest mode, D53) turns achievements off too (D58). Shown as a trophy (or a broken one) beside each mod in both lists (D57); a playset is compatible only if every enabled mod is.
 - **Native mods (D04–D06, D16, D17):** trust approvals, schema-rendered settings per playset, per-plugin status from the
   last session, install from archive, Create Mod scaffolding.
 - **Safety (D24):** first-run wizard, crash guard, "launch without native mods", one-click full restore.
@@ -121,14 +122,14 @@ The manager reads it without loading the DLL.
 
 ## Open and unverified
 
-- In-game test that Orion's fingerprint file changes the checksum (D22). That the checksum gates achievements is confirmed (D43).
+- Cosmetic-only plugins in the real game: that a set of plugins that all claim `cosmetic` leaves the game's checksum unmodified (D53). The rest of honest mode is confirmed (D52, D53), as is that the checksum gates achievements (D43).
 - What the game and the Paradox Launcher do to a stub left in the game folder across updates and Steam file verification;
   what the Launcher writes to `dlc_load.json` on a Steam start; whether the game rewrites it at boot (affects drift
   detection).
 - What the game does with an unknown keyword when a plugin is missing (expected: `error.log` entries, not a crash).
 - Whether Paradox's uploader or rules allow DLLs on the Workshop. Deliberately not tested (D05).
 - Whether address data may ever be published (D15); legal read; code signing and false positives.
-- Orion has only been run inside a stand-in game (D50). Whether plugin init under the loader lock behaves in the real game is untested.
+- Orion has run in the real game on one build only (Stellaris v4.5.2, D52 to D54): plugins load, a failing plugin doesn't stop the game, the Paradox Launcher is unaffected. Other builds are untested; after a patch the user allows the new build (D51).
 - Working names, not final: the fingerprint file path, dependency version-range semantics, the codename overlap check (D20).
 
 ## Reference material (read-only, kept outside this repo)

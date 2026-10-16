@@ -140,7 +140,7 @@ public sealed class Indexer(IndexStore store)
         try
         {
             var bytes = read(f.Path);
-            if (kind != Kind.Localisation) return Entry(f, domain!, ScriptScanner.TopLevel(bytes, kind == Kind.Events));
+            if (kind != Kind.Localisation) return Entry(f, domain!, ScriptScanner.TopLevel(bytes, kind == Kind.Events, domain));
             var (language, keys) = ScriptScanner.Localisation(bytes);
             return Entry(f, "localisation/" + (language.Length > 0 ? language : "unknown"), keys);
         }

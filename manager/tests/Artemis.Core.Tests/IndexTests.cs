@@ -30,6 +30,60 @@ public class ScriptScannerTests
         Assert.Equal([2, 3, 8, 10], defs.Select(d => d.Line));
     }
 
+    private static List<Def> TopIn(string domain, string text) => ScriptScanner.TopLevel(Encoding.UTF8.GetBytes(text), false, domain);
+
+    [Fact]
+    public void An_inline_script_statement_is_never_a_name_in_any_folder()
+    {
+        var text = """
+            inline_script = { script = buildings/gen_a PARAM = 1 }
+            inline_script = "buildings/gen_b"
+            real_building = { cost = 1 }
+            """;
+        Assert.Equal(["real_building"], TopIn("common/buildings", text).Select(d => d.Name));
+        Assert.Equal(["real_building"], Top(text).Select(d => d.Name));
+    }
+
+    [Fact]
+    public void A_string_that_runs_over_several_lines_does_not_upset_the_braces_after_it()
+    {
+        // the game's own buildings do this: an inline script's parameter is a block of script inside quotes
+        var defs = TopIn("common/buildings", "building_a = {\n\tinline_script = {\n\t\tscript = x\n\t\tTRIGGER = \"owner? = {\n\t\t\tflag = yes\n\t\t}\"\n\t\tAMOUNT = @n\n\t}\n\tcost = 1\n}\nbuilding_b = { }\n");
+        Assert.Equal(["building_a", "building_b"], defs.Select(d => d.Name));
+        Assert.Equal([1, 11], defs.Select(d => d.Line));
+        Assert.Equal(["a", "b"], Top("a = \"one\ntwo\" b = 1").Select(d => d.Name));
+    }
+
+    [Fact]
+    public void A_wrapper_block_is_named_by_its_key_or_name_field_not_by_its_word()
+    {
+        var defs = TopIn("common/component_templates", """
+            weapon_component_template = { size = small  key = "LASER_1"  nested = { key = "inner" } }
+            utility_component_template = { KEY = "SHIELD_1" }
+            utility_component_template = { inline_script = { script = x } }
+            ordinary_name = { }
+            """);
+        Assert.Equal(["LASER_1", "SHIELD_1", "ordinary_name"], defs.Select(d => d.Name));
+        Assert.Equal([1, 2, 4], defs.Select(d => d.Line));
+        Assert.Equal(["GetFoo"], TopIn("common/scripted_loc", "defined_text = { name = GetFoo text = { } }").Select(d => d.Name));
+    }
+
+    [Fact]
+    public void Random_names_are_named_by_key_for_part_lists_and_formats_are_left_out()
+    {
+        var defs = TopIn("common/random_names", "empire_name_format = { x = 1 }  federation_name_parts_list = { key = fed_parts }  war_name_format = { }");
+        Assert.Equal(["fed_parts"], defs.Select(d => d.Name));
+    }
+
+    [Fact]
+    public void A_scripted_variable_is_a_name_only_in_its_own_folder_because_elsewhere_it_belongs_to_its_file()
+    {
+        const string text = "@distance = 5\nthing = { }";
+        Assert.Equal(["@distance", "thing"], TopIn("common/scripted_variables", text).Select(d => d.Name));
+        Assert.Equal(["thing"], TopIn("common/solar_system_initializers", text).Select(d => d.Name));
+        Assert.Equal(["@distance", "thing"], Top(text).Select(d => d.Name));
+    }
+
     [Fact]
     public void A_byte_order_mark_and_stray_braces_do_no_harm()
     {

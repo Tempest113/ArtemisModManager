@@ -52,6 +52,7 @@ public sealed partial class MainViewModel
             SaveSettings();
             OnPropertyChanged();
             AppLog.Info(value ? "Plugins switched on" : "Plugins switched off");
+            RefreshPluginStates();   // the trophies depend on it
         }
     }
 
@@ -133,13 +134,15 @@ public sealed partial class MainViewModel
         RefreshDetails();
     }
 
+    private bool PluginIsOff(string key) =>
+        SelectedPlayset?.Mods.FirstOrDefault(m => string.Equals(m.Key, key, StringComparison.OrdinalIgnoreCase)) is { PluginOff: true };
+
     /// <summary>The small mark on a row: null for a mod with no plugin.</summary>
     public (string Text, bool Warn, string Tip)? PluginMarkFor(ModInfo mod)
     {
         if (mod.Plugin is null) return null;
         var state = PluginStateOf(mod.Key);
-        if (SelectedPlayset?.Mods.FirstOrDefault(m => string.Equals(m.Key, mod.Key, StringComparison.OrdinalIgnoreCase)) is { PluginOff: true })
-            return ("Plugin off", false, "This mod has a plugin, switched off in this playset.");
+        if (PluginIsOff(mod.Key)) return ("Plugin off", false, "This mod has a plugin, switched off in this playset.");
         var tip = state switch
         {
             PluginState.Approved => "Has a plugin, and you approved it. It runs code inside the game.",

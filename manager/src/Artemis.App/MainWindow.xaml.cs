@@ -347,9 +347,22 @@ public partial class MainWindow : Window
         if (OrderList.SelectedItem is LoadOrderRowViewModel { IsSeparator: false } row) _vm.FollowSelection(row);
     }
 
-    /// <summary>The selected rows in list order.</summary>
+    /// <summary>The selected rows in list order. Rows folded away in a collapsed group are never acted on, even if Ctrl+A selected them.</summary>
     private List<LoadOrderRowViewModel> SelectedOrderRows() =>
-        OrderList.SelectedItems.OfType<LoadOrderRowViewModel>().OrderBy(_vm.LoadOrder.IndexOf).ToList();
+        OrderList.SelectedItems.OfType<LoadOrderRowViewModel>().Where(r => !r.IsHidden).OrderBy(_vm.LoadOrder.IndexOf).ToList();
+
+    private void GroupChevron_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is not LoadOrderRowViewModel separator) return;
+        _vm.ToggleGroup(separator);
+        DeselectHidden();
+    }
+
+    /// <summary>A row that is folded away can't stay selected: Delete or Space would act on something nobody can see.</summary>
+    private void DeselectHidden()
+    {
+        foreach (var row in OrderList.SelectedItems.OfType<LoadOrderRowViewModel>().Where(r => r.IsHidden).ToList()) OrderList.SelectedItems.Remove(row);
+    }
 
     private void OrderRow_RightClick(object sender, MouseButtonEventArgs e)
     {
@@ -363,6 +376,10 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         if (rows is [{ IsSeparator: true } separator])
         {
+            menu.Items.Add(Item(separator.IsCollapsed ? "Show the mods of this group" : "Fold this group away", separator.IsCollapsed ? "IcoChevDown" : "IcoChevRight", () => { _vm.ToggleGroup(separator); DeselectHidden(); }));
+            menu.Items.Add(Item("Fold all groups away", "IcoChevRight", () => { _vm.SetAllGroups(true); DeselectHidden(); }));
+            menu.Items.Add(Item("Show all groups", "IcoChevDown", () => _vm.SetAllGroups(false)));
+            menu.Items.Add(new Separator());
             menu.Items.Add(Item("Rename…", "IcoEdit", () => _vm.RenameSeparator(separator)));
             menu.Items.Add(Item("Remove separator", "IcoClose", () => _vm.RemoveRows(rows)));
             item.ContextMenu = menu;

@@ -1,5 +1,5 @@
-# Drives the real app against a throw-away sandbox to check the two mod lists (D57): the column headers, and a trophy (or a cracked one) beside each mod
-# once the index has been read, for a mod that leaves achievements on (or turns them off). Prints PASS or FAIL per check.
+# Drives the real app against a throw-away sandbox to check the two mod lists (D57, D58): the column headers, and a trophy (or a broken one) beside each mod
+# once the index has been read, for a mod that leaves achievements on (or turns them off: covered files, or a plugin that counts). Prints PASS or FAIL per check.
 # Build first: dotnet build manager/src/Artemis.App -o <folder>, then set ARTEMIS_EXE to <folder>\Artemis.exe (or build to the default output).
 . "$PSScriptRoot\Ui.ps1"
 $root = Join-Path $script:scratch 'listbox'
@@ -29,14 +29,22 @@ Mod 'cosmetic' 'Cosmetic Portraits Pack' 'v4.*' @('gfx/portraits/a.dds', 'locali
 Mod 'gameplay' 'Gameplay Overhaul With A Rather Long Name To Truncate' 'v4.*' @('common/technology/a.txt')
 Mod 'old' 'Old Fixes' 'v3.*' @('events/e.txt', 'events/f.txt')
 Mod 'ui' 'Interface Tweaks' 'v4.*' @('interface/a.gui')
-$mods = @('cosmetic', 'gameplay', 'old', 'ui') | ForEach-Object { '{ "key": "' + $_ + '", "enabled": true }' }
+# three mods with a plugin and no covered file: one that counts toward the checksum, one that says it is cosmetic, one that counts but is switched off in the playset
+Mod 'loud' 'Loud Plugin' 'v4.*' @('orion/p.dll', 'modloader.json')
+Mod 'quiet' 'Quiet Plugin' 'v4.*' @('orion/p.dll', 'modloader.json')
+Mod 'muted' 'Muted Plugin' 'v4.*' @('orion/p.dll', 'modloader.json')
+foreach ($k in 'loud', 'muted') { '{ "id": "t.' + $k + '", "version": "1", "apiVersion": 1, "files": ["orion/p.dll"] }' | Set-Content "$user\mod\$k\modloader.json" }
+'{ "id": "t.quiet", "version": "1", "apiVersion": 1, "files": ["orion/p.dll"], "cosmetic": true }' | Set-Content "$user\mod\quiet\modloader.json"
+$mods = @('cosmetic', 'gameplay', 'old', 'ui', 'loud', 'quiet') | ForEach-Object { '{ "key": "' + $_ + '", "enabled": true }' }
+$mods += '{ "key": "muted", "enabled": true, "pluginOff": true }'
 (@{ gameDir = $game; activePlaysetId = 'p1' } | ConvertTo-Json) | Set-Content "$data\settings.json"
 "{ `"id`": `"p1`", `"name`": `"Test`", `"mods`": [ $($mods -join ', ') ] }" | Set-Content "$data\playsets\p1.json"
 
 Start-App $data $user
-Check 'every mod gets a trophy once its files have been read (4 mods in each list)' ($null -ne (Wait-For { (Count-Typed 'Adds or changes*') -eq 8 }))
-Check 'the two mods that leave achievements on have a trophy in each list' ((Count-Typed 'Adds or changes no file*') -eq 4)
-Check 'the two that change checksum files have a cracked one in each list, saying how many files' ((Count-Typed 'Adds or changes 1 file the*') -eq 2 -and (Count-Typed 'Adds or changes 2 files the*') -eq 2)
+Check 'every mod gets a mark once its files have been read (7 mods in each list)' ($null -ne (Wait-For { ((Count-Typed 'Adds or changes*') + (Count-Typed 'Its plugin counts*')) -eq 14 }))
+Check 'the mods that leave achievements on have a trophy in each list: no covered file, and a plugin that is cosmetic or switched off' ((Count-Typed 'Adds or changes no file*') -eq 8)
+Check 'the two that change checksum files have a broken one in each list, saying how many files' ((Count-Typed 'Adds or changes 1 file the*') -eq 2 -and (Count-Typed 'Adds or changes 2 files the*') -eq 2)
+Check 'a mod whose plugin counts toward the checksum has a broken one in each list' ((Count-Typed 'Its plugin counts*') -eq 2)
 Check 'each list has the trophy as a column header' ((Count-Typed 'Achievements') -eq 2)
 Check 'the summary under the Launch button is gone' ($null -eq (Find-El 'Achievements: off (2 mods)') -and @(Find-All 'Achievements: off (2 mods)').Count -eq 0)
 Check 'the version column says Game version' ($null -ne (Find-El 'Game version') -and $null -eq (Find-El 'Game'))

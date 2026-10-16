@@ -76,4 +76,29 @@ public static class AchievementCheck
         }
         return changes;
     }
+
+    /// <summary>
+    /// What a mod does to achievements. <paramref name="coveredFiles"/> are the files of the mod the checksum covers (null: not looked at yet). A plugin that counts
+    /// toward the checksum (honest mode, D53: not cosmetic, not switched off) turns achievements off on its own, whatever the files say.
+    /// </summary>
+    public static AchievementVerdict Judge(IReadOnlyList<string>? coveredFiles, bool pluginCounts)
+    {
+        var reasons = new List<string>();
+        if (coveredFiles is { Count: > 0 })
+            reasons.Add($"adds or changes {coveredFiles.Count:N0} file{(coveredFiles.Count == 1 ? "" : "s")} the game's checksum covers, such as {coveredFiles[0]}");
+        if (pluginCounts) reasons.Add("its plugin counts toward the game's checksum while it is switched on");
+        if (reasons.Count > 0)
+        {
+            var text = string.Join(", and ", reasons);
+            return new AchievementVerdict(AchievementState.Off, char.ToUpper(text[0]) + text[1..] + ". Achievements turn off.");
+        }
+        return coveredFiles is null
+            ? new AchievementVerdict(AchievementState.Unknown, "")
+            : new AchievementVerdict(AchievementState.On, "Adds or changes no file the game's checksum covers, so achievements stay on.");
+    }
 }
+
+public enum AchievementState { Unknown, On, Off }
+
+/// <summary>The state and the sentence that explains it, for a tooltip.</summary>
+public sealed record AchievementVerdict(AchievementState State, string Tip);

@@ -442,8 +442,41 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var position = 0;
         foreach (var row in LoadOrder) row.Index = row.IsSeparator ? 0 : ++position;
+        RefreshGroups();
         RefreshFind();
         CheckDependencies();
+    }
+
+    // ---- collapsing a separator's group: the mods below it, down to the next separator, are folded away ----
+
+    private void RefreshGroups()
+    {
+        var (hidden, size) = Playset.Groups(LoadOrder.Select(r => r.Entry).ToList());
+        for (var i = 0; i < LoadOrder.Count; i++)
+        {
+            LoadOrder[i].IsHidden = hidden[i];
+            if (LoadOrder[i].IsSeparator) LoadOrder[i].GroupSize = size[i];
+        }
+    }
+
+    /// <summary>Folds a separator's group away, or brings it back. Saved with the playset, but not an undo step: it changes no order.</summary>
+    public void ToggleGroup(LoadOrderRowViewModel separator) => SetGroups([separator], !separator.IsCollapsed);
+
+    public void SetAllGroups(bool collapsed) => SetGroups(LoadOrder.Where(r => r.IsSeparator).ToList(), collapsed);
+
+    private void SetGroups(IReadOnlyList<LoadOrderRowViewModel> separators, bool collapsed)
+    {
+        foreach (var s in separators) s.IsCollapsed = collapsed;
+        RefreshGroups();
+        if (SelectedPlayset is { } p) Try(() => _store.Save(p));
+    }
+
+    /// <summary>Opens the group a hidden row is in (a found, moved or newly added mod must not vanish from the list).</summary>
+    private void RevealRow(LoadOrderRowViewModel row)
+    {
+        if (!row.IsHidden) return;
+        for (var i = LoadOrder.IndexOf(row) - 1; i >= 0; i--)
+            if (LoadOrder[i].IsSeparator) { SetGroups([LoadOrder[i]], false); return; }
     }
 
     // ---- notes and "new or updated" markers ----
@@ -527,6 +560,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (on) AddMod(mod);
         else RemoveMod(mod.Key);
         Renumber();
+        if (on && LoadOrder.Count > 0) RevealRow(LoadOrder[^1]);   // added at the end: into the last group, which may be folded
         PlaysetChanged();
         RefreshMembershipFilter();
         if (on) AskAboutNewPlugins([mod]);
@@ -550,6 +584,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         foreach (var row in SelectedInstalled) AddMod(row.Mod!);
         Renumber();
+        if (LoadOrder.Count > 0) RevealRow(LoadOrder[^1]);
         PlaysetChanged();
         foreach (var row in SelectedInstalled) row.Refresh();
         RefreshMembershipFilter();
@@ -593,6 +628,7 @@ public sealed partial class MainViewModel : ObservableObject
         p.Mods.Clear();
         p.Mods.AddRange(order.Select(r => r.Entry));
         Renumber();
+        foreach (var row in rows) RevealRow(row);   // moved into a folded group: open it
         PlaysetChanged();
         if (rows.Count == 1) SelectedRow = rows[0];
     }
@@ -688,6 +724,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void GoToMatch(int index)
     {
         _matchIndex = index;
+        RevealRow(_matches[index]);
         SelectedRow = _matches[index];
         FindStatus = $"{index + 1} of {_matches.Count}";
     }

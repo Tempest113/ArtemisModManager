@@ -71,7 +71,7 @@
   <sys:String x:Key="IcoNote">&#xE90A;</sys:String>
   <sys:String x:Key="IcoLog">&#xE8A5;</sys:String>
 
-  <!-- Achievement marks on a 16 x 16 grid (no font has them): a trophy for a mod that leaves achievements on, a cracked one for a mod that turns them off. -->
+  <!-- Achievement marks on a 16 x 16 grid (no font has them): a trophy for a mod that leaves achievements on, a broken one for a mod that turns them off. -->
   <DrawingImage x:Key="TrophyOk" po:Freeze="True">
     <DrawingImage.Drawing>
       <DrawingGroup>

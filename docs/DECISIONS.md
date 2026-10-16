@@ -468,7 +468,7 @@ game's databases exist and before it parses a script. Orion makes the read-only 
 `OrionPluginInit` may return `ORION_INIT_UNSUPPORTED` (1): the plugin is shown as skipped, `buildUnsupported`, not failed. *The plugin:* `sdk/test_plugins/keywords.cpp` is `xor` and `num_assigned_workforce` ported from the
 earlier loader (features `xor` and `num_assigned_workforce` switch each off), with the old in-game test mods as `sdk/test_mods/keyword_tests` (`event xortest.1`, `event wftest.1` in the console). The megastructure build-speed
 hook is not ported: it needs an inline-hook library, which antivirus heuristics flagged before (D14). *Tests:* the harness checks the values, the callback (once, on the main thread, not for another thread's read, case-insensitive
-path), the unsupported return and the converter (21 scenarios); the engine code itself can only be tried in the game.
+path), the unsupported return and the converter (21 scenarios at the time); the engine code itself can only be tried in the game.
 
 
 **D54 first real-game result (2026-10-15, build 6abeaa3f-37f2000, v4.5.2).** The keyword plugin loaded; the game-start hook fired on the first read of the exe's own `common` folder; both donor checks passed and both
@@ -518,7 +518,54 @@ the game's `logs/script_documentation` folder (about 5 MB, rewritten each run) i
 
 **D57 Achievement trophies, header wording (requested by the author, 2026-10-15).** The "Achievements: on / off (3 mods)" text under Launch (D22) is gone. Each mod now carries its own mark in both lists: a trophy when it adds or changes no file the
 game's checksum covers, a broken one when it does (white, the two halves of the trophy split along a jagged crack and tilted 15 degrees away from each other into a V, so the two can't be mixed up at a glance; the intact trophy stays grey); nothing until the mod's files have been read, or when the game has no checksum list. It is a column of its own, 36 px wide, left of "Game version" in
-Installed and left of the enabled switch in Load order (that list has no version column), so names are cut off a little sooner. The tooltip says how many covered files the mod changes and names the first. The playset-wide answer is now "any cracked
+Installed and left of the enabled switch in Load order (that list has no version column), so names are cut off a little sooner. The tooltip says how many covered files the mod changes and names the first. The playset-wide answer is now "any broken
 trophy among the enabled mods"; there is no summary any more. The icons are drawn in `Themes/Tokens.xaml` (no icon font has them). Header wording: "Game" is "Game version", "#" is "Number" (left-aligned over its column), and "Name" starts at the
-left edge of the thumbnail column in both lists. *Not covered:* a mod's plugin that counts for the game's checksum under honest mode (D53) also turns achievements off, but the trophy looks at files only, as the old text did.
+left edge of the thumbnail column in both lists. (The plugin gap noted here is closed in D58.)
 Test: `manager/tools/UiTests/ListsSmoke.ps1`.
+
+
+**D58 The trophy counts plugins too; documentation brought up to date (2026-10-16).** A mod's plugin that counts toward the game's checksum (honest mode, D53) turns achievements off by itself, whatever the mod's files say, so the trophy (D57) and the
+drawer's "Achievements" line now judge both (`AchievementCheck.Judge`, one rule for both places). A plugin counts when it is not marked `cosmetic`, plugins are switched on (the "Load plugins" box) and it is not switched off for this mod in the
+playset: the same conditions under which Orion is told `countsForChecksum` (D53). Approval is not asked about: an unapproved plugin is skipped by Orion until approved, but the mark warns ahead of time rather than showing a trophy that turns
+broken the moment the plugin is approved; the tooltip says "while it is switched on". The marks refresh when plugins are switched on or off for the playset or for a mod. *Limit:* when the user override of `countsForChecksum` is built (D53,
+not yet), `PluginCounts` must follow it. Also: the README lost its temporary-repo wording, and DESIGN's "Open and unverified" list was corrected (the fingerprint test and "Orion has only run in a stand-in game" were already resolved by D52 to D54; what remains
+unverified is the cosmetic-only case, other game builds, and the Launcher and stub questions). Tests: five core tests for the verdict (182 in all), and `ListsSmoke.ps1` now has a counting, a cosmetic and a switched-off plugin mod.
+
+
+**D59 Conflict scanner: what is not a definition name (2026-10-16).** The author saw an `inline_script` "conflict" in common/buildings between the game and two mods whose files share nothing. Cause: the scanner (D38) took every top-level word as a
+definition name, and some top-level words are not names. Checked against the game's own files and the author's real playset, three kinds were fixed; the index version went from 2 to 3, so every source is read again once (about 3 s warm for 48 mods and the game).
+(a) `inline_script` is a statement that expands into definitions: never a name, in any folder. (b) Folders whose blocks all start with the same word and carry the name inside (`weapon_component_template = { key = X }`, `defined_text = { name = X }`,
+`ship_section_template`, `component_set`, `special_project`, `message_type`, `ship_design`, `ship_behavior`, `ambient_object`, `random_list` in planet classes, the `*_parts_list` blocks of random_names, ...) are now named by that field (`key` or `name`, any case);
+a block without it (its content comes from an inline script) is left out, because its name can't be known; blocks that are not named things at all (`terraform_link`, `part`, the `*_format` blocks) are left out too. The table is `Wrapped` in `ScriptScanner`; a mod-added word
+in one of these folders is still read as its own name. Before this, every pair of mods with component templates or scripted localisation "conflicted" on the shared word. (c) A `@variable` is a name only in common/scripted_variables; elsewhere it is local to its file.
+Also found by comparing counts on the real playset: (d) a quoted string may run over several lines (an inline script's `TRIGGER = "owner = { ... }"` is a block of script in quotes, used by the game's own buildings). The scanner ended strings at the line break, lost
+its place in the braces, and then read parameters such as `AMOUNT` and whole sub-blocks (`triggered_planet_modifier`) as top-level definitions for the rest of that definition. Strings now end at their closing quote. A quote never closed now swallows the rest of its file
+(the game would not read such a file either). *Result on the real playset (16 enabled mods):* no `inline_script` conflict, 4 fewer definition conflicts from the string fault (1308 to 1304; the wrapper change moves the names of component templates and the like
+to their real keys, where the real overlaps remain). *Not covered:* wrapper words the game files don't show (a new block type in a patch) are read as before until added to the table; folders where the name is neither the word nor `key`/`name` are not known to exist.
+Tests: six scanner and conflict tests (192 in all).
+
+**D60 A separator's group can be folded away (requested by the author, 2026-10-16; supersedes "not built" in D32).** In the load order each separator has a chevron: it hides the mods below it, down to the next separator, and brings them back. The separator
+shows how many mods its group holds. Mods above the first separator belong to no group. A group stays folded between sessions: `collapsed` is saved on the separator's line in the playset file (only when set). Folding changes no order, so it is not an
+undo step and does not touch `dlc_load.json`; positions still count the hidden mods. Hidden rows are never acted on: they are deselected when their group folds, and Ctrl+A with Delete, Space or a drag leaves them alone. A hidden mod comes back into view when
+it is found with Find next or previous, when a mod is moved into the group, and when a mod is added at the end of the list while the last group is folded. The separator's right-click menu has "Fold this group away" or "Show the mods of this group", and
+"Fold all groups away" and "Show all groups". The Installed list's groups (Source) were already collapsible. *Limit:* Undo and Redo bring back the fold state the playset had at the moment of the step. The logic that decides what is hidden is `Playset.Groups`
+(four core tests, 192 in all); `manager/tools/UiTests/SeparatorsSmoke.ps1` drives the app.
+
+**D61 Plugin ideas studied; a sampling profiler first (2026-10-16, requested by the author).** *Councillor slots:* the council is built for 6 positions (`MAX_COUNCIL_POSITIONS` in `unchecked_defines`, a 6-column grid in `council_view.gui`, and the engine's own
+slot handling: `unlock_council_slots` only opens locked ones). The author takes the engine cap as fact, so a 7th slot is not a script mod; it would be a code-level (fragile) plugin whose feasibility depends on how the engine stores the slots (a fixed array
+would rule it out). Not started; reading the engine's slot functions needs a Ghidra pass on the Linux build (full symbols, on disk; no analysed project exists). *Performance:* the aim is late-game days per second, for personal use (multiplayer desync is not a concern,
+but a non-cosmetic plugin still counts toward the checksum and turns achievements off). Suspects are fleet pathfinding and pop/job assignment; nothing was measured, so no hook target is chosen. *The profiler* (`sdk/test_plugins/profiler.cpp`, manifest id
+`artemis.sampling-profiler`, stable tier, claims `cosmetic`: it only observes): its own thread pauses each game thread for tens of microseconds every `intervalMs` (default 2), walks the stack with the unwind tables of the exe and the other modules (no engine addresses,
+no hooks, nothing from the build data), and counts call paths in a tree. While a thread is paused the sampler touches only memory prepared beforehand (no heap, locks, logging or loader calls), which is what stops the pause from deadlocking against a lock the paused
+thread holds. Functions without an unwind entry (small leaf functions) are told apart by the gap after the previous entry. Ctrl+Shift+hotkey (default F9, read from the keyboard state) starts and stops; `autoSeconds` samples from plugin load (for start-up);
+a run stops by itself after 20 minutes. The report goes to `Documents\...\Stellaris\modloader\profiles\profile-<time>.txt`. `orion/tools/profile_report.py` reads it with Exception Translator's names file (read only, never copied; about a third of the game's code is named,
+the rest shows as `sub_<rva>` and is charged to the nearest named caller) and prints per thread: where the innermost frame was, subsystem shares, busiest functions, and named inclusive time. *Checked against the real exe offline:* the exe's unwind table has 27,136
+chained entries and following each chain to its first entry gives exactly Exception Translator's function owner for all of them. *Tests:* a stand-in game with a known call chain, one function with unwind data and one without (22 scenarios in all). *Not yet run in the
+real game at the time of writing;* the hotkey path is not covered by the stand-in (only the automatic run is), and the pause overhead on the real thread count is unmeasured (the report records the average cost of one sampling round).
+
+**D61 first real-game result (2026-10-16, v4.5.2, the author's mid-2300s save, `one_year` at top speed, 105 s sampled).** The hotkey worked: 71 threads, 2.4 million samples, no dropped or cut call paths; one sampling round took 0.7 ms
+(each thread is paused for only a small part of that). *Where the time goes (main thread, 97% busy; about 11 worker threads are each busy about a fifth of the time and wait the rest, so the game is bound by its main thread):* the simulation tick
+(`HandleTurnTick`) holds about two thirds (daily update 32%, micro update 23%, AI 8%, scripted triggers 8% inclusive); drawing a frame (`RenderFrame`) holds about 22%, and updating the interface (map icons, buttons) about another 5 to 9%. The game
+draws frames from inside its own long updates (a frame is pumped from the daily update, the micro update and AI, and also while the main thread waits for the parallel ship update), so part of that drawing overlaps waiting and would not turn into speed;
+the rest would. The suspects from the author's experience are not what this year shows: fleet pathfinding about 0.5% and pop/job assignment about 0.3% of the main thread (a war-heavy period may differ). Another sim cost seen: rebuilding each empire's
+default ship designs (`SetDefaultShipDesigns`, about 3.5%), which looks like a repeated calculation. The profile slowed the game itself (no clean baseline yet). `profile_report.py` gained `--tree` (a top-down call tree from the top or from a function).

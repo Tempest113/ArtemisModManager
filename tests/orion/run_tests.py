@@ -180,6 +180,12 @@ class Tools:
         compile_with_msvc(f'/O1 /EHsc /MT /Fo"{w}/" "{(Path(__file__).with_name("fake_physfs_game.cpp")).as_posix()}" /Fe:"{w}/fake_physfs_game.exe"', work)
         compile_with_msvc(f'/O1 /LD /MT /EHsc /I"{(ROOT / "sdk" / "include").as_posix()}" /Fo"{w}/" "{(ROOT / "sdk" / "test_plugins" / "honest_spike.cpp").as_posix()}" '
                           f'/Fe:"{w}/honest_spike.dll"', work)
+        # the sampling profiler and a stand-in game that spends a few seconds in a known call chain
+        compile_with_msvc(f'/O1 /LD /MT /EHsc /W4 /I"{(ROOT / "sdk" / "include").as_posix()}" /Fo"{w}/" "{(ROOT / "sdk" / "test_plugins" / "profiler.cpp").as_posix()}" '
+                          f'/Fe:"{w}/profiler.dll"', work)
+        compile_with_msvc(f'/O1 /Ob0 /Fo"{w}/" "{(Path(__file__).with_name("fake_busy_game.c")).as_posix()}" /Fe:"{w}/fake_busy_game.exe"', work)
+        self.fake_busy_game = work / "fake_busy_game.exe"
+        self.profiler_bytes = (work / "profiler.dll").read_bytes()
         self.fake_physfs_game = work / "fake_physfs_game.exe"
         self.spike_bytes = (work / "honest_spike.dll").read_bytes()
         self.fake_game = work / "fake_game.exe"
@@ -607,6 +613,57 @@ def ini_to_build_tool(c: Case, root: Path, tools: Tools) -> None:
     c.check(data["source"] == "user" and data["game"] == "v4.5.2" and data["addresses"] == addresses and data["values"] == values, f"merged file: {data}")
 
 
+def sampling_profiler(c: Case, root: Path, tools: Tools) -> None:
+    """The profiler plugin samples a stand-in game for two seconds (autoSeconds), and its report shows the game's hot call chain on its busiest thread
+    and a sleeping thread as waiting; the report tool names the functions it is given names for."""
+    import profile_report  # orion/tools, already on the path
+
+    w = World(root, "profiler", tools, [Mod("Orion Sampling Profiler", "artemis.sampling-profiler", dll=tools.profiler_bytes,
+                                            values={"autoSeconds": 2, "intervalMs": 2, "hotkey": 0})], game_exe=tools.fake_busy_game)
+    r = w.run()
+    c.game_ok(r)
+    where = dict(kv.split("=") for kv in r.stdout.split() if "=" in kv)
+    c.check((w.entry("Orion Sampling Profiler") or {}).get("state") == "loaded", f"the profiler should load: {w.entry('Orion Sampling Profiler')}")
+    reports = sorted((w.modloader / "profiles").glob("profile-*.txt"))
+    c.check(len(reports) == 1, f"one report was expected: {reports}")
+    log = w.modloader / "plugins" / "Orion Sampling Profiler.log"
+    text = log.read_text(encoding="utf-8") if log.exists() else ""
+    c.check("sampling started" in text and "sampling stopped" in text and "report: " in text, f"the plugin's log should tell the story: {text!r}")
+    if not reports or "leaf" not in where:
+        return
+    rep = profile_report.parse(reports[0].read_text(encoding="utf-8"))
+    base, leaf, flat, parent = (int(where[k], 16) for k in ("base", "leaf", "flat", "parent"))
+    c.check(rep.header["build"] == build_id_of(tools.fake_busy_game) and rep.exe_base == base, f"header: {rep.header}")
+    c.check(int(rep.header["cycles"]) > 200, f"too few sampling cycles in two seconds: {rep.header['cycles']}")
+    c.check(any(m[0] == base for m in rep.modules), "the exe should be in the module list")
+    busy = max(rep.threads, key=lambda i: rep.threads[i]["in_exe"])
+    c.check(rep.threads[busy]["in_exe"] > 0.8 * rep.threads[busy]["samples"] > 100, f"the busy thread should be mostly in the exe: {rep.threads[busy]}")
+    waiting = [t for i, t in rep.threads.items() if i != busy and t["samples"] > 100 and t["in_exe"] < 0.2 * t["samples"]]
+    c.check(waiting, f"the sleeping thread should show as waiting outside the exe: {rep.threads}")
+    # the busy thread's samples end in HotLeaf (a function with unwind data) and in FlatLeaf (none: found from the gap after the previous entry), both called by HotParent
+    root_node = next(n for n, t in rep.roots.items() if t == busy)
+    ends = [n for n, v in rep.nodes.items() if v[2] > 0 and _descends_from(rep, n, root_node)]
+    in_leaf = sum(rep.nodes[n][2] for n in ends if rep.nodes[n][1] == leaf and rep.nodes[rep.nodes[n][0]][1] == parent)
+    in_flat = sum(rep.nodes[n][2] for n in ends if 0 <= rep.nodes[n][1] - flat < 0x20 and rep.nodes[rep.nodes[n][0]][1] == parent)
+    c.check(in_leaf > 50, f"HotLeaf (0x{leaf:x}, called by HotParent 0x{parent:x}) should be where many samples end: {in_leaf} of {rep.threads[busy]['samples']}")
+    c.check(in_flat > 50, f"FlatLeaf (0x{flat:x}, no unwind data) should be found at its likely start: {in_flat} of {rep.threads[busy]['samples']}")
+    # names: the report tool uses a names file in Exception Translator's shape, and falls back to sub_<rva> without one
+    names = root / "profiler-names.json"
+    names.write_text(json.dumps({"names": [[leaf - base, "HotLeaf(unsigned)", "test", 1.0], [parent - base, "HotParent(unsigned)", "test", 1.0]]}))
+    shown = profile_report.render(rep, profile_report.Namer(rep, names), 1, 5, [("hot chain", __import__("re").compile("Hot"))])
+    c.check("HotLeaf(unsigned)" in shown and "hot chain" in shown, f"named report:\n{shown}")
+    calls = profile_report.tree(rep, profile_report.Namer(rep, names), busy, None, 6, 1.0, False)
+    c.check("HotParent(unsigned)" in calls and "HotLeaf(unsigned)" in calls.split("HotParent(unsigned)", 1)[1], f"the call tree should show HotLeaf under HotParent:\n{calls}")
+    plain = profile_report.render(rep, profile_report.Namer(rep, None), 1, 5, [])
+    c.check(f"sub_{leaf - base:x}" in plain, "without names the hot function should show as sub_<rva>")
+
+
+def _descends_from(rep, node: int, root: int) -> bool:
+    while node in rep.nodes:
+        node = rep.nodes[node][0]
+    return node == root
+
+
 def export_parity(c: Case, root: Path, tools: Tools) -> None:
     real = set(gen_proxy.read_exports(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "winmm.dll"))
     ours = set(gen_proxy.read_exports(BUILD / "winmm.dll"))
@@ -617,7 +674,7 @@ def export_parity(c: Case, root: Path, tools: Tools) -> None:
     c.check(version.startswith("Artemis"), f"the stub's company name must start with Artemis (that is how the manager recognises it): {version!r}")
 
 
-SCENARIOS = [export_parity, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
+SCENARIOS = [export_parity, sampling_profiler, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
              order_and_dependencies, versions_and_api, manifests_and_paths, cache_is_checked]
 
 

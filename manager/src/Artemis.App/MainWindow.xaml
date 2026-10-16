@@ -121,7 +121,7 @@
       </StackPanel>
     </DataTemplate>
 
-    <!-- A trophy when the mod leaves achievements on, a cracked one when it turns them off, nothing until it has been looked at. -->
+    <!-- A trophy when the mod leaves achievements on, a broken one when it turns them off, nothing until it has been looked at. -->
     <DataTemplate x:Key="AchievementMark">
       <Grid Width="16" Height="16" ToolTip="{Binding AchievementTip}" Background="{StaticResource Clear}">
         <Image Source="{StaticResource TrophyOk}" Visibility="{Binding AchievementOk, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="{Binding AchievementTip}" />
@@ -209,11 +209,19 @@
         <Grid Margin="12,0,12,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="26" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoGrip}" FontSize="13" Foreground="#6B6B74" Cursor="SizeAll" Background="{StaticResource Clear}"
                      ToolTip="Drag the row to reorder" />
-          <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" Margin="4,0,0,0" TextTrimming="CharacterEllipsis" />
+          <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="24" Height="24" Click="GroupChevron_Click" ToolTip="Fold the mods of this group away, or show them"
+                  AutomationProperties.Name="Fold or unfold this group">
+            <TextBlock x:Name="Chev" Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="10" />
+          </Button>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" Margin="2,0,0,0" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding GroupSize}" Foreground="{StaticResource Faint}" FontSize="12" Margin="8,0,0,0" ToolTip="Mods in this group" />
+          </StackPanel>
         </Grid>
       </Border>
       <Border x:Name="DropAbove" Height="2" VerticalAlignment="Top" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
@@ -223,6 +231,7 @@
         <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoft}" /></DataTrigger>
         <DataTrigger Binding="{Binding Drop}" Value="Above"><Setter TargetName="DropAbove" Property="Visibility" Value="Visible" /></DataTrigger>
         <DataTrigger Binding="{Binding Drop}" Value="Below"><Setter TargetName="DropBelow" Property="Visibility" Value="Visible" /></DataTrigger>
+        <DataTrigger Binding="{Binding IsCollapsed}" Value="True"><Setter TargetName="Chev" Property="Text" Value="{StaticResource IcoChevRight}" /></DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -240,6 +249,9 @@
       <EventSetter Event="PreviewMouseMove" Handler="OrderRow_MouseMove" />
       <EventSetter Event="DragOver" Handler="OrderRow_DragOver" />
       <EventSetter Event="Drop" Handler="OrderRow_Drop" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsHidden}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+      </Style.Triggers>
     </Style>
   </Window.Resources>
 
@@ -509,7 +521,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" />
                     <Border Grid.Column="2" Style="{StaticResource VDivider}" />
-                    <Image Grid.Column="2" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a cracked one that it turns them off"
+                    <Image Grid.Column="2" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a broken one that it turns them off"
                            AutomationProperties.Name="Achievements" />
                     <Border Grid.Column="3" Style="{StaticResource VDivider}" />
                     <TextBlock Grid.Column="3" Text="Game version" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="12,0,0,0" />
@@ -587,7 +599,7 @@
                     <Border Grid.Column="2" Style="{StaticResource VDivider}" />
                     <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0" />
                     <Border Grid.Column="4" Style="{StaticResource VDivider}" />
-                    <Image Grid.Column="4" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a cracked one that it turns them off"
+                    <Image Grid.Column="4" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a broken one that it turns them off"
                            AutomationProperties.Name="Achievements" />
                     <Border Grid.Column="5" Style="{StaticResource VDivider}" />
                   </Grid>

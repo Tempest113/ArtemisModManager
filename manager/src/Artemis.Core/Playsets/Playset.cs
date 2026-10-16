@@ -16,6 +16,10 @@ public sealed class PlaysetMod
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool PluginOff { get; set; }
 
+    /// <summary>A separator whose group of mods (down to the next separator) is folded away in the list.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Collapsed { get; set; }
+
     [JsonIgnore]
     public bool IsSeparator => Separator is not null;
 }
@@ -58,10 +62,29 @@ public sealed class Playset
         return rest;
     }
 
+    /// <summary>
+    /// Per line of the load order: whether it is folded away because the nearest separator above it is collapsed (a separator itself never is), and, at a
+    /// separator, how many mods its group holds. Mods above the first separator belong to no group and are never hidden.
+    /// </summary>
+    public static (bool[] Hidden, int[] GroupSize) Groups(IReadOnlyList<PlaysetMod> mods)
+    {
+        var hidden = new bool[mods.Count];
+        var size = new int[mods.Count];
+        var header = -1;
+        for (var i = 0; i < mods.Count; i++)
+        {
+            if (mods[i].IsSeparator) { header = i; continue; }
+            if (header < 0) continue;
+            size[header]++;
+            hidden[i] = mods[header].Collapsed;
+        }
+        return (hidden, size);
+    }
+
     public Playset Clone(string? newName = null) => new()
     {
         Name = newName ?? Name,
-        Mods = Mods.Select(m => new PlaysetMod { Key = m.Key, Enabled = m.Enabled, Separator = m.Separator, PluginOff = m.PluginOff }).ToList(),
+        Mods = Mods.Select(m => new PlaysetMod { Key = m.Key, Enabled = m.Enabled, Separator = m.Separator, PluginOff = m.PluginOff, Collapsed = m.Collapsed }).ToList(),
         PluginValues = PluginValues.ToDictionary(p => p.Key, p => new Dictionary<string, JsonElement>(p.Value), StringComparer.OrdinalIgnoreCase),
     };
 

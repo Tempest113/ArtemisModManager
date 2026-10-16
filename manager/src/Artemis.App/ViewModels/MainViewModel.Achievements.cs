@@ -14,8 +14,14 @@ public sealed partial class MainViewModel
     private Dictionary<string, IReadOnlyList<string>> _checkedChanges = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The files of the mod that the game's checksum covers: none means achievement-compatible. Null until the mod has been looked at (or the game has no list).</summary>
-    public IReadOnlyList<string>? ChecksumChangesFor(string key) =>
+    private IReadOnlyList<string>? ChecksumChangesFor(string key) =>
         _checksum is null || !_indexStats.ContainsKey((SourceKind.Mod, key)) ? null : _checkedChanges.GetValueOrDefault(key) ?? [];
+
+    /// <summary>Whether the mod's plugin would count toward the game's checksum (honest mode, D53): it isn't cosmetic, and plugins are on and not switched off for this mod.</summary>
+    private bool PluginCounts(ModInfo mod) => _settings.PluginsEnabled && mod.Plugin?.Manifest is { Cosmetic: false } && !PluginIsOff(mod.Key);
+
+    /// <summary>What the mod does to achievements, for the trophy beside it and the details drawer.</summary>
+    public AchievementVerdict AchievementFor(ModInfo mod) => AchievementCheck.Judge(ChecksumChangesFor(mod.Key), PluginCounts(mod));
 
     private void LoadChecksumRules()
     {

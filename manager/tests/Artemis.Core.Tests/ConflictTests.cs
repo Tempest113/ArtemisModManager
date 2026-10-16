@@ -47,6 +47,19 @@ public class ConflictTests : IDisposable
     private static string[] Entries(Conflict c) => c.Entries.Select(e => e.SourceName).ToArray();
 
     [Fact]
+    public void Inline_script_statements_in_different_files_are_not_a_conflict_but_the_same_template_key_is()
+    {
+        Add("a", "Mod A"); Add("b", "Mod B");
+        Mod("a", "common/buildings/a.txt", "inline_script = { script = buildings/gen PARAM = a }\nbuilding_a = { }");
+        Mod("b", "common/buildings/b.txt", "inline_script = { script = buildings/gen PARAM = b }\nbuilding_b = { }");
+        Mod("a", "common/component_templates/a.txt", "weapon_component_template = { key = \"LASER_1\" }\nweapon_component_template = { key = \"LASER_A\" }");
+        Mod("b", "common/component_templates/b.txt", "weapon_component_template = { key = \"LASER_1\" }\nweapon_component_template = { key = \"LASER_B\" }");
+
+        var conflict = Assert.Single(Find("a", "b").Conflicts);
+        Assert.Equal(("common/component_templates", "LASER_1"), (conflict.Domain, conflict.Name));
+    }
+
+    [Fact]
     public void Two_mods_with_the_same_file_path_conflict_and_the_later_one_wins()
     {
         Add("a", "Mod A"); Add("b", "Mod B");

@@ -79,7 +79,7 @@ public delegate void FileNameVisitor(string path, string domain, ReadOnlySpan<ch
 public sealed class IndexStore(string path)
 {
     /// <summary>Bump when the tables or the way files are read change: every older cache is then dropped.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     public string Path => path;
 
