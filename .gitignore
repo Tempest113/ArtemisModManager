@@ -1,0 +1,38 @@
+# Never commit game files or game-derived artifacts (see README "Guardrails")
+*.exe
+*.dll
+*.pdb
+*.dmp
+*.so
+*.obj
+*.lib
+*.exp
+*.ilk
+*.idb
+depot_*/
+
+# Build output
+build/
+
+# Per-build address data, reverse-engineering notes and analysis output are game-derived.
+# They stay local until a deliberate decision to publish a slimmed version (docs/DECISIONS.md D15).
+/research/
+/local/
+addresses*.ini
+
+# Copies of game files the tools may read (e.g. checksum_manifest.txt)
+checksum_manifest.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# Local editor/agent tooling
+.claude/
+
+# .NET build output
+bin/
+obj/
+.vs/
+*.user
+publish/

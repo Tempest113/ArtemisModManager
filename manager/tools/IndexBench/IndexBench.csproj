@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Times the index on the real mods and game. Not part of the solution and not shipped: run it with dotnet run on this project -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Artemis.Core\Artemis.Core.csproj" />
+  </ItemGroup>
+
+</Project>

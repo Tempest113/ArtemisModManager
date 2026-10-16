@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Artemis.App/Artemis.App.csproj" />
+    <Project Path="src/Artemis.Core/Artemis.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Artemis.Core.Tests/Artemis.Core.Tests.csproj" />
+  </Folder>
+</Solution>

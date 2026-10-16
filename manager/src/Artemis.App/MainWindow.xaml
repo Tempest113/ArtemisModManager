@@ -1,0 +1,1069 @@
+<Window x:Class="Artemis.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Artemis.App.ViewModels"
+        xmlns:local="clr-namespace:Artemis.App"
+        Title="Artemis Mod Manager" Icon="Assets/app.ico" Width="1240" Height="780" MinWidth="960" MinHeight="520"
+        WindowStyle="None" Background="{StaticResource Bg0}" Foreground="{StaticResource Text}"
+        FontFamily="{StaticResource UiFont}" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="36" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
+  </WindowChrome.WindowChrome>
+
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+    <DataTemplate x:Key="ThumbView">
+      <Grid Width="28" Height="28">
+        <Border CornerRadius="5" Background="{Binding PlaceholderBrush}">
+          <TextBlock Text="{Binding Initials}" FontSize="10" FontWeight="SemiBold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <!-- Steam draws a picture's transparent pixels black; so do we, rather than letting the placeholder show through. -->
+        <Border x:Name="Pic" CornerRadius="5" Background="Black">
+          <Border CornerRadius="5">
+            <Border.Background><ImageBrush ImageSource="{Binding Thumbnail}" Stretch="UniformToFill" /></Border.Background>
+          </Border>
+        </Border>
+      </Grid>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}"><Setter TargetName="Pic" Property="Visibility" Value="Collapsed" /></DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A 1px line down the left edge of a column cell: the table's column dividers. -->
+    <Style x:Key="VDivider" TargetType="Border">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{StaticResource Line}" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- Each list is its own pane: a rounded card inside the Mods panel. -->
+    <Style x:Key="Pane" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource PaneBg}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- What an empty list says. Hidden when it has nothing to say. -->
+    <Style x:Key="EmptyHint" TargetType="TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="32,56,32,0" />
+      <Setter Property="Foreground" Value="{StaticResource Muted}" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <Style x:Key="PaneSplitter" TargetType="GridSplitter">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="GridSplitter">
+            <Border Background="{StaticResource Clear}">
+              <Border x:Name="Line" Width="2" CornerRadius="1" Margin="0,24" Background="{StaticResource Accent}" Opacity="0" HorizontalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Line" Property="Opacity" Value="0.6" /></Trigger>
+              <Trigger Property="IsDragging" Value="True"><Setter TargetName="Line" Property="Opacity" Value="1" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Line" Property="Opacity" Value="0" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="HeaderText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{StaticResource Faint}" />
+    </Style>
+
+    <Style x:Key="LaunchPart" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource Clear}" />
+      <Setter Property="Foreground" Value="{StaticResource AccentInk}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- "New" / "Updated" since the last launch, and a note icon whose tooltip is the note. -->
+    <DataTemplate x:Key="RowMarks">
+      <StackPanel Orientation="Horizontal">
+        <Border Background="{StaticResource AccentSoft}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
+                ToolTip="Changed since you last launched from Artemis">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Style.Triggers><DataTrigger Binding="{Binding ChangeText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+            </Style>
+          </Border.Style>
+          <TextBlock Text="{Binding ChangeText}" FontSize="11" Foreground="{StaticResource Accent}" />
+        </Border>
+        <Border CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center" Background="{StaticResource Bg3}" ToolTip="{Binding PluginTip}">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Style.Triggers><DataTrigger Binding="{Binding PluginText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+            </Style>
+          </Border.Style>
+          <TextBlock Text="{Binding PluginText}" FontSize="11">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                <Style.Triggers><DataTrigger Binding="{Binding PluginWarn}" Value="True"><Setter Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger></Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Border>
+        <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoNote}" FontSize="12" Margin="8,0,0,0" Foreground="{StaticResource Muted}"
+                   ToolTip="{Binding Note}" Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- A trophy when the mod leaves achievements on, a cracked one when it turns them off, nothing until it has been looked at. -->
+    <DataTemplate x:Key="AchievementMark">
+      <Grid Width="16" Height="16" ToolTip="{Binding AchievementTip}" Background="{StaticResource Clear}">
+        <Image Source="{StaticResource TrophyOk}" Visibility="{Binding AchievementOk, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="{Binding AchievementTip}" />
+        <Image Source="{StaticResource TrophyBroken}" Visibility="{Binding AchievementBroken, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="{Binding AchievementTip}" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="InstalledRow" DataType="{x:Type vm:InstalledRowViewModel}">
+      <Border Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+      <Grid Height="40" Margin="12,0,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="38" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="36" />
+          <ColumnDefinition Width="108" />
+          <ColumnDefinition Width="56" />
+        </Grid.ColumnDefinitions>
+        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ThumbView}" HorizontalAlignment="Left" Focusable="False" />
+        <DockPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0" LastChildFill="True">
+          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Icon}" Text="{StaticResource IcoWarn}" FontSize="12" Margin="8,0,0,0" ToolTip="{Binding ProblemText}"
+                     Foreground="{StaticResource Warn}" Visibility="{Binding HasProblem, Converter={StaticResource BoolToVis}}" />
+          <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource RowMarks}" Focusable="False" />
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <Border Grid.Column="2" Style="{StaticResource VDivider}" />
+        <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource AchievementMark}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+        <Border Grid.Column="3" Style="{StaticResource VDivider}" />
+        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="{Binding VersionTip}">
+          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoWarn}" FontSize="11" Margin="0,0,4,0" Foreground="{StaticResource Warn}"
+                     Visibility="{Binding IsOutdated, Converter={StaticResource BoolToVis}}" />
+          <TextBlock Text="{Binding VersionText}" FontSize="11.5" Foreground="{StaticResource Faint}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <Border Grid.Column="4" Style="{StaticResource VDivider}" />
+        <ToggleButton Grid.Column="4" Style="{StaticResource AddToggle}" IsChecked="{Binding InPlayset}" HorizontalAlignment="Center"
+                      ToolTip="Add to or remove from the playset" AutomationProperties.Name="In playset" />
+      </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="OrderRow" DataType="{x:Type vm:LoadOrderRowViewModel}">
+      <Grid Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+      <Border x:Name="Bd" Background="{StaticResource Clear}">
+        <Grid Height="40" Margin="12,0,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="48" />
+            <ColumnDefinition Width="46" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="36" />
+            <ColumnDefinition Width="62" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoGrip}" FontSize="13" Foreground="#6B6B74" Cursor="SizeAll" Background="{StaticResource Clear}"
+                     ToolTip="Drag the row to reorder" />
+          <TextBox Grid.Column="1" Style="{StaticResource PositionBox}" Text="{Binding IndexText, UpdateSourceTrigger=LostFocus}" KeyDown="PositionBox_KeyDown"
+                   VerticalAlignment="Center" Margin="2,0,6,0" ToolTip="Type a position and press Enter to move this mod" AutomationProperties.Name="Position" />
+          <Border Grid.Column="2" Style="{StaticResource VDivider}" />
+          <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource ThumbView}" HorizontalAlignment="Left" Margin="8,0,0,0" Focusable="False" />
+          <DockPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,10,0" LastChildFill="True">
+            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Icon}" Text="{StaticResource IcoWarn}" FontSize="12" Margin="8,0,0,0" ToolTip="{Binding ProblemText}"
+                       Foreground="{StaticResource Warn}" Visibility="{Binding HasProblem, Converter={StaticResource BoolToVis}}" />
+            <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource RowMarks}" Focusable="False" />
+            <TextBlock x:Name="NameText" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+          <Border Grid.Column="4" Style="{StaticResource VDivider}" />
+          <ContentControl Grid.Column="4" Content="{Binding}" ContentTemplate="{StaticResource AchievementMark}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+          <Border Grid.Column="5" Style="{StaticResource VDivider}" />
+          <ToggleButton Grid.Column="5" Style="{StaticResource SwitchToggle}" IsChecked="{Binding Enabled}" HorizontalAlignment="Center" ToolTip="Enabled" AutomationProperties.Name="Enabled" />
+        </Grid>
+      </Border>
+      <Border x:Name="DropAbove" Height="2" VerticalAlignment="Top" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
+        <Border x:Name="DropBelow" Height="2" VerticalAlignment="Bottom" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
+      </Grid>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Drop}" Value="Above"><Setter TargetName="DropAbove" Property="Visibility" Value="Visible" /></DataTrigger>
+        <DataTrigger Binding="{Binding Drop}" Value="Below"><Setter TargetName="DropBelow" Property="Visibility" Value="Visible" /></DataTrigger>
+        <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoft}" /></DataTrigger>
+        <DataTrigger Binding="{Binding Enabled}" Value="False"><Setter TargetName="NameText" Property="Opacity" Value="0.45" /></DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A separator: a labelled band across the whole row. It only groups the mods below it visually. -->
+    <DataTemplate x:Key="OrderSeparator" DataType="{x:Type vm:LoadOrderRowViewModel}">
+      <Grid>
+      <Border x:Name="Bd" Height="34" Background="{StaticResource Hover}" BorderBrush="{StaticResource Line}" BorderThickness="0,1">
+        <Grid Margin="12,0,12,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoGrip}" FontSize="13" Foreground="#6B6B74" Cursor="SizeAll" Background="{StaticResource Clear}"
+                     ToolTip="Drag the row to reorder" />
+          <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" Margin="4,0,0,0" TextTrimming="CharacterEllipsis" />
+        </Grid>
+      </Border>
+      <Border x:Name="DropAbove" Height="2" VerticalAlignment="Top" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
+        <Border x:Name="DropBelow" Height="2" VerticalAlignment="Bottom" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
+      </Grid>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoft}" /></DataTrigger>
+        <DataTrigger Binding="{Binding Drop}" Value="Above"><Setter TargetName="DropAbove" Property="Visibility" Value="Visible" /></DataTrigger>
+        <DataTrigger Binding="{Binding Drop}" Value="Below"><Setter TargetName="DropBelow" Property="Visibility" Value="Visible" /></DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <local:OrderTemplateSelector x:Key="OrderSelector" Mod="{StaticResource OrderRow}" Separator="{StaticResource OrderSeparator}" />
+
+    <Style x:Key="InstalledItem" TargetType="ListBoxItem" BasedOn="{StaticResource RowItem}">
+      <EventSetter Event="PreviewMouseRightButtonDown" Handler="InstalledRow_RightClick" />
+    </Style>
+
+    <Style x:Key="OrderItem" TargetType="ListBoxItem" BasedOn="{StaticResource RowItem}">
+      <Setter Property="AllowDrop" Value="True" />
+      <EventSetter Event="PreviewMouseRightButtonDown" Handler="OrderRow_RightClick" />
+      <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OrderRow_MouseDown" />
+      <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OrderRow_MouseUp" />
+      <EventSetter Event="PreviewMouseMove" Handler="OrderRow_MouseMove" />
+      <EventSetter Event="DragOver" Handler="OrderRow_DragOver" />
+      <EventSetter Event="Drop" Handler="OrderRow_Drop" />
+    </Style>
+  </Window.Resources>
+
+  <Grid x:Name="Root">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="36" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Title bar -->
+    <Grid Background="{StaticResource Clear}">
+      <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+        <Image Source="Assets/logo.png" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality" />
+
+        <TextBlock Text="Artemis Mod Manager" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Border Background="{StaticResource Bg3}" CornerRadius="5" Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center"
+                Visibility="{Binding HasGameVersion, Converter={StaticResource BoolToVis}}">
+          <TextBlock Text="{Binding GameVersion, StringFormat=Stellaris {0}}" FontSize="11.5" Foreground="{StaticResource Muted}" />
+        </Border>
+        <Button Style="{StaticResource CaptionButton}" Click="Minimize_Click" AutomationProperties.Name="Minimize">
+          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoMin}" FontSize="10" />
+        </Button>
+        <Button x:Name="MaxButton" Style="{StaticResource CaptionButton}" Click="Maximize_Click" AutomationProperties.Name="Maximize">
+          <TextBlock x:Name="MaxGlyph" Style="{StaticResource Icon}" Text="{StaticResource IcoMax}" FontSize="10" />
+        </Button>
+        <Button Style="{StaticResource CloseCaptionButton}" Click="Close_Click" AutomationProperties.Name="Close">
+          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoWinClose}" FontSize="10" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="216" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left column: playset, launch, pages -->
+      <StackPanel Margin="12">
+        <TextBlock Text="Playset" Style="{StaticResource HeaderText}" Margin="4,0,0,4" />
+        <Button x:Name="PlaysetButton" Style="{StaticResource FieldButton}" Click="PlaysetMenu_Click" AutomationProperties.Name="Playset" ToolTip="Switch or manage playsets">
+          <Grid>
+            <TextBlock Text="{Binding SelectedPlaysetName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,22,0" />
+            <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" Foreground="{StaticResource Faint}" HorizontalAlignment="Right" />
+          </Grid>
+        </Button>
+
+        <Border Background="{StaticResource Accent}" CornerRadius="7" Margin="0,8,0,0" Height="38">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="1" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="1" />
+              <ColumnDefinition Width="36" />
+            </Grid.ColumnDefinitions>
+            <Button Style="{StaticResource LaunchPart}" Tag="7,0,0,7" Padding="0" Command="{Binding LaunchCommand}" AutomationProperties.Name="Launch"
+                    ToolTip="Start Stellaris through Steam with this playset">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlay}" FontSize="13" />
+                <TextBlock Text="{Binding LaunchText}" Margin="6,0,0,0" />
+              </StackPanel>
+            </Button>
+            <Border Grid.Column="1" Background="#40000000" Margin="0,8" />
+            <Button Grid.Column="2" Style="{StaticResource LaunchPart}" Tag="0" Padding="0" Command="{Binding ResumeCommand}" AutomationProperties.Name="Resume"
+                    ToolTip="{Binding ResumeTip}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoResume}" FontSize="13" />
+                <TextBlock Text="Resume" Margin="6,0,0,0" />
+              </StackPanel>
+            </Button>
+            <Border Grid.Column="3" Background="#40000000" Margin="0,8" />
+            <Button x:Name="LaunchMenuButton" Grid.Column="4" Style="{StaticResource LaunchPart}" Tag="0,7,7,0" Padding="0" Click="LaunchMenu_Click" ToolTip="More ways to launch" AutomationProperties.Name="Launch options">
+              <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" />
+            </Button>
+          </Grid>
+        </Border>
+
+        <StackPanel Margin="0,16,0,0">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowMods}" AutomationProperties.Name="Mods">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLayers}" />
+              <TextBlock Text="Mods" Margin="10,0,0,0" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowConflicts}" AutomationProperties.Name="Conflicts" Margin="0,2,0,0">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Text="{Binding ConflictBadge}" Foreground="{StaticResource Faint}" FontSize="11.5" VerticalAlignment="Center" />
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDiff}" />
+                <TextBlock Text="Conflicts" Margin="10,0,0,0" />
+              </StackPanel>
+            </DockPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowPlugins}" AutomationProperties.Name="Plugins" Margin="0,2,0,0">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlugin}" />
+              <TextBlock Text="Plugins" Margin="10,0,0,0" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowLogs}" AutomationProperties.Name="Logs" Margin="0,2,0,0">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLog}" />
+              <TextBlock Text="Logs" Margin="10,0,0,0" />
+            </StackPanel>
+          </RadioButton>
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Main panel -->
+      <Border Grid.Column="1" Margin="0,0,12,12" Background="{StaticResource Bg1}" CornerRadius="10" BorderBrush="{StaticResource LineStrong}" BorderThickness="1">
+        <Grid>
+          <Grid x:Name="ModsPage" Visibility="{Binding ShowMods, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="16,16,16,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Bg3}" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLayers}" FontSize="18" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Mods" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Add mods on the left. Order and switch them on the right." Foreground="{StaticResource Muted}" FontSize="12.5" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding IndexStatus}" Foreground="{StaticResource Faint}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,10,0">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers><DataTrigger Binding="{Binding IndexStatus}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <Button x:Name="AddModButton" Style="{StaticResource IconButton}" Click="AddMod_Click" ToolTip="Create a mod or install one from an archive" AutomationProperties.Name="Add a mod">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Command="{Binding ToggleDetailsCommand}" ToolTip="Show or hide the mod details (Alt+Enter)" AutomationProperties.Name="Mod details">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoInfo}" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Command="{Binding RescanCommand}" ToolTip="Rescan mods" AutomationProperties.Name="Rescan mods">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoSync}" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Command="{Binding OpenModFolderCommand}" ToolTip="Open the mod folder" AutomationProperties.Name="Open the mod folder">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFolder}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+
+            <!-- Another tool changed the game's mod list -->
+            <StackPanel Grid.Row="1">
+            <Border Margin="12,0,12,12" Padding="14,10" CornerRadius="8" Background="{StaticResource AccentSoft}" BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                    Visibility="{Binding HasDrift, Converter={StaticResource BoolToVis}}">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                  <Button Style="{StaticResource GhostButton}" Content="Import as a playset" Command="{Binding ImportDriftCommand}" Padding="10,5" />
+                  <Button Style="{StaticResource GhostButton}" Content="Dismiss" Command="{Binding IgnoreDriftCommand}" Padding="10,5" Margin="6,0,0,0" />
+                </StackPanel>
+                <TextBlock Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </DockPanel>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Notices}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="12,0,12,12" Padding="14,10" CornerRadius="8" Background="{StaticResource Bg3}" BorderBrush="{StaticResource Warn}" BorderThickness="1">
+                    <DockPanel>
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <Button Style="{StaticResource GhostButton}" Content="{Binding ActionText}" Command="{Binding ActionCommand}" Padding="10,5"
+                                Visibility="{Binding HasAction, Converter={StaticResource BoolToVis}}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Dismiss" Command="{Binding DismissCommand}" Padding="10,5" Margin="6,0,0,0" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+            <Grid Grid.Row="2" Margin="12,0,12,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LibraryColumn" Width="*" MinWidth="300" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition x:Name="OrderColumn" Width="*" MinWidth="380" />
+              </Grid.ColumnDefinitions>
+
+              <!-- Drag the gap between the panes to resize them -->
+              <GridSplitter x:Name="PaneSplitter" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Columns"
+                            ResizeBehavior="PreviousAndNext" Cursor="SizeWE" ToolTip="Drag to resize the lists" Style="{StaticResource PaneSplitter}" />
+
+              <!-- Installed card: the pane, or a thin strip when collapsed -->
+              <Border Grid.Column="0" Style="{StaticResource Pane}" />
+
+              <!-- Collapsed library: a thin strip -->
+              <Border Grid.Column="0">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers><DataTrigger Binding="{Binding LibraryCollapsed}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <StackPanel Margin="0,10,0,0" HorizontalAlignment="Center">
+                  <Button Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="Show the installed mods" AutomationProperties.Name="Show the installed mods">
+                    <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevRight}" />
+                  </Button>
+                  <TextBlock Text="Installed" Foreground="{StaticResource Faint}" FontSize="11.5" Margin="0,12,0,0" HorizontalAlignment="Center">
+                    <TextBlock.LayoutTransform><RotateTransform Angle="90" /></TextBlock.LayoutTransform>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+
+              <!-- Installed pane -->
+              <Grid Grid.Column="0">
+                <Grid.Style>
+                  <Style TargetType="Grid">
+                    <Style.Triggers><DataTrigger Binding="{Binding LibraryCollapsed}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </Grid.Style>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel Margin="12,8,12,8" Height="32">
+                  <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="Hide the installed mods" AutomationProperties.Name="Hide the installed mods">
+                    <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoCollapse}" />
+                  </Button>
+                  <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,12,0">
+                    <TextBlock Text="Installed" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding InstalledCountText}" Foreground="{StaticResource Faint}" Margin="7,0,0,0" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="All" IsChecked="{Binding IsGroupAll}" />
+                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="Source" IsChecked="{Binding IsGroupSource}" />
+                  </StackPanel>
+                </DockPanel>
+                <DockPanel Grid.Row="1" Margin="12,0,12,8">
+                  <Button x:Name="FilterButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Margin="8,0,0,0" Click="InstalledFilter_Click"
+                          ToolTip="Filter and sort the installed mods" AutomationProperties.Name="Filter and sort">
+                    <Grid>
+                      <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFilter}" />
+                      <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-5,0"
+                               Visibility="{Binding FilterActive, Converter={StaticResource BoolToVis}}" />
+                    </Grid>
+                  </Button>
+                  <TextBox x:Name="InstalledSearchBox" Style="{StaticResource SearchBox}" Tag="Search mods" AutomationProperties.Name="Search installed mods"
+                           Text="{Binding InstalledSearch, UpdateSourceTrigger=PropertyChanged}" />
+                </DockPanel>
+                <Border Grid.Row="2" BorderBrush="{StaticResource LineStrong}" BorderThickness="0,1">
+                  <Grid Margin="12,0,12,0" Height="28">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="38" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="36" />
+                      <ColumnDefinition Width="108" />
+                      <ColumnDefinition Width="56" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" />
+                    <Border Grid.Column="2" Style="{StaticResource VDivider}" />
+                    <Image Grid.Column="2" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a cracked one that it turns them off"
+                           AutomationProperties.Name="Achievements" />
+                    <Border Grid.Column="3" Style="{StaticResource VDivider}" />
+                    <TextBlock Grid.Column="3" Text="Game version" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    <Border Grid.Column="4" Style="{StaticResource VDivider}" />
+                  </Grid>
+                </Border>
+                <ListBox Grid.Row="3" x:Name="InstalledList" ItemsSource="{Binding InstalledView}" ItemTemplate="{StaticResource InstalledRow}"
+                         Margin="0,0,0,8" VirtualizingPanel.ScrollUnit="Pixel" PreviewKeyDown="InstalledList_PreviewKeyDown" ItemContainerStyle="{StaticResource InstalledItem}" SelectionMode="Extended" SelectionChanged="InstalledList_SelectionChanged"
+                         AutomationProperties.Name="Installed mods">
+                  <ListBox.GroupStyle>
+                    <GroupStyle ContainerStyle="{StaticResource GroupItemStyle}" />
+                  </ListBox.GroupStyle>
+                </ListBox>
+                <TextBlock Grid.Row="3" Style="{StaticResource EmptyHint}" Text="{Binding InstalledEmptyText}" />
+                <Border Grid.Row="4" Margin="12,0,12,12" Padding="12,6" CornerRadius="8" Background="{StaticResource Bg3}"
+                        Visibility="{Binding HasMultiSelection, Converter={StaticResource BoolToVis}}">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding ClearInstalledSelectionCommand}" ToolTip="Clear the selection" AutomationProperties.Name="Clear the selection">
+                      <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoClose}" FontSize="11" />
+                    </Button>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedInstalledCount, StringFormat={}{0} selected}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                      <Button Style="{StaticResource GhostButton}" Command="{Binding AddSelectedToPlaysetCommand}" Padding="10,5">
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" FontSize="12" />
+                          <TextBlock Text="Add to playset" Margin="7,0,0,0" />
+                        </StackPanel>
+                      </Button>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </Grid>
+
+              <!-- Load order pane -->
+              <Border Grid.Column="2" Style="{StaticResource Pane}" />
+              <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Margin="12,8,12,8" Height="32" Orientation="Horizontal">
+                  <TextBlock Text="Load order" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <Button x:Name="AddSeparatorButton" Style="{StaticResource GhostButton}" Margin="12,0,0,0" Padding="9,4" Click="AddSeparator_Click"
+                          ToolTip="Add a separator: a label for a group of mods" AutomationProperties.Name="Add separator">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" FontSize="11" />
+                      <TextBlock Text="Separator" Margin="6,0,0,0" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+                <DockPanel Grid.Row="1" Margin="12,0,12,8">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindNextCommand}" ToolTip="Next match" AutomationProperties.Name="Next match">
+                    <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" />
+                  </Button>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindPreviousCommand}" ToolTip="Previous match" AutomationProperties.Name="Previous match">
+                    <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevUp}" FontSize="11" />
+                  </Button>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding FindStatus}" Foreground="{StaticResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="8,0,4,0" />
+                  <TextBox x:Name="FindBox" Style="{StaticResource SearchBox}" Tag="Search enabled" AutomationProperties.Name="Search enabled mods"
+                           Text="{Binding FindText, UpdateSourceTrigger=PropertyChanged}" KeyDown="FindBox_KeyDown" />
+                </DockPanel>
+                <Border Grid.Row="2" BorderBrush="{StaticResource LineStrong}" BorderThickness="0,1">
+                  <Grid Margin="12,0,12,0" Height="28">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="20" />
+                      <ColumnDefinition Width="48" />
+                      <ColumnDefinition Width="46" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="36" />
+                      <ColumnDefinition Width="62" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Text="Number" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="2,0,0,0" />
+                    <Border Grid.Column="2" Style="{StaticResource VDivider}" />
+                    <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <Border Grid.Column="4" Style="{StaticResource VDivider}" />
+                    <Image Grid.Column="4" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a cracked one that it turns them off"
+                           AutomationProperties.Name="Achievements" />
+                    <Border Grid.Column="5" Style="{StaticResource VDivider}" />
+                  </Grid>
+                </Border>
+                <ListBox Grid.Row="3" x:Name="OrderList" ItemsSource="{Binding LoadOrder}" SelectedItem="{Binding SelectedRow}" ItemTemplateSelector="{StaticResource OrderSelector}"
+                         Margin="0,0,0,8" VirtualizingPanel.ScrollUnit="Pixel" SelectionMode="Extended" PreviewKeyDown="OrderList_PreviewKeyDown" AllowDrop="True" PreviewDragOver="OrderList_PreviewDragOver" DragOver="OrderList_DragOver" Drop="OrderList_Drop" ItemContainerStyle="{StaticResource OrderItem}" SelectionChanged="OrderList_SelectionChanged" AutomationProperties.Name="Load order" />
+                <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="32,56,32,0" IsHitTestVisible="False">
+                  <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                      <Style.Triggers><DataTrigger Binding="{Binding LoadOrder.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    </Style>
+                  </StackPanel.Style>
+                  <TextBlock Text="No mods in this playset yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  <TextBlock Style="{StaticResource EmptyHint}" Margin="0,6,0,0" VerticalAlignment="Center"
+                             Text="Add mods with the + buttons in the Installed list, or import a playset from the playset menu." />
+                </StackPanel>
+              </Grid>
+
+              <!-- Mod details: a drawer over the right-hand edge. It follows the selected mod in either list. -->
+              <Border Grid.ColumnSpan="3" HorizontalAlignment="Right" Width="340" Background="{StaticResource Popup}" BorderBrush="{StaticResource LineStrong}"
+                      BorderThickness="1" CornerRadius="8" Visibility="{Binding DetailsOpen, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                  <Grid DockPanel.Dock="Top" Margin="16,10,8,0" Height="32">
+                    <TextBlock Text="Details" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource IconButton}" Width="26" Height="26" HorizontalAlignment="Right" Command="{Binding CloseDetailsCommand}"
+                            ToolTip="Close (Esc)" AutomationProperties.Name="Close the details">
+                      <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoClose}" FontSize="11" />
+                    </Button>
+                  </Grid>
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,8,16,16">
+                      <TextBlock Text="Select a mod to see its details." Foreground="{StaticResource Muted}" Margin="0,24,0,0" HorizontalAlignment="Center">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock">
+                            <Style.Triggers><DataTrigger Binding="{Binding HasDetails}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                      <StackPanel Visibility="{Binding HasDetails, Converter={StaticResource BoolToVis}}">
+                        <DockPanel Margin="0,0,0,16">
+                          <Viewbox DockPanel.Dock="Left" Width="56" Height="56" Margin="0,0,14,0" VerticalAlignment="Top">
+                            <ContentControl Content="{Binding DetailsRow}" ContentTemplate="{StaticResource ThumbView}" Focusable="False" />
+                          </Viewbox>
+                          <TextBlock Text="{Binding DetailsRow.Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding DetailLines}" Focusable="False">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                  <ColumnDefinition Width="84" />
+                                  <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Label}" Foreground="{StaticResource Faint}" />
+                                <TextBlock x:Name="Value" Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                              </Grid>
+                              <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Warn}" Value="True"><Setter TargetName="Value" Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger>
+                              </DataTemplate.Triggers>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Visibility="{Binding DetailsHasDependencies, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
+                          <TextBlock Text="Asks to load after" Foreground="{StaticResource Faint}" Margin="0,0,0,2" ToolTip="The descriptor lists these mods so they load first. It does not mean this mod needs them." />
+                          <TextBlock Text="Only an ordering hint from the mod's author, not a requirement." Foreground="{StaticResource Faint}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap" />
+                          <ItemsControl ItemsSource="{Binding DependencyLines}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <DockPanel Margin="0,0,0,6">
+                                  <TextBlock x:Name="Mark" DockPanel.Dock="Left" Style="{StaticResource Icon}" Text="{StaticResource IcoCheck}" FontSize="11" Margin="0,2,8,0"
+                                             Foreground="{StaticResource Muted}" VerticalAlignment="Top" />
+                                  <StackPanel>
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="State" Text="{Binding Text}" Foreground="{StaticResource Faint}" FontSize="11.5" TextWrapping="Wrap" />
+                                  </StackPanel>
+                                </DockPanel>
+                                <DataTemplate.Triggers>
+                                  <DataTrigger Binding="{Binding Ok}" Value="False">
+                                    <Setter TargetName="Mark" Property="Text" Value="{StaticResource IcoWarn}" />
+                                    <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Warn}" />
+                                    <Setter TargetName="State" Property="Foreground" Value="{StaticResource Warn}" />
+                                  </DataTrigger>
+                                </DataTemplate.Triggers>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                        <StackPanel Margin="0,8,0,0">
+                          <TextBlock Text="Note" Foreground="{StaticResource Faint}" Margin="0,0,0,4" />
+                          <!-- Enabled only for installed mods, which is also when the playset button works. -->
+                          <TextBox Style="{StaticResource MultiLineBox}" Text="{Binding DetailsNote, UpdateSourceTrigger=PropertyChanged}" MinHeight="64" MaxHeight="160"
+                                   IsEnabled="{Binding DetailsCanChangePlayset}" AutomationProperties.Name="Note" ToolTip="Only you see this" />
+                        </StackPanel>
+                        <StackPanel Margin="0,16,0,0">
+                          <Button Style="{StaticResource PrimaryButton}" Content="{Binding DetailsPlaysetButtonText}" Command="{Binding ToggleDetailsPlaysetCommand}"
+                                  IsEnabled="{Binding DetailsCanChangePlayset}" HorizontalAlignment="Stretch" Padding="10,7" />
+                          <Button Content="Open in Plugins" Command="{Binding OpenDetailsPluginCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                                Visibility="{Binding DetailsHasPlugin, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="Open the mod folder" Command="{Binding OpenDetailsFolderCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                                  Visibility="{Binding DetailsHasFolder, Converter={StaticResource BoolToVis}}" />
+                          <Button Content="Open on the Workshop" Command="{Binding OpenDetailsWorkshopCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                                  Visibility="{Binding DetailsHasWorkshop, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
+                  </ScrollViewer>
+                </DockPanel>
+              </Border>
+
+              <!-- Short-lived messages -->
+              <Border Grid.ColumnSpan="3" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,16" Padding="16,8" CornerRadius="8"
+                      Background="{StaticResource Bg3}" BorderBrush="{StaticResource LineStrong}" BorderThickness="1">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding Message}" VerticalAlignment="Center" />
+                  <Button Style="{StaticResource GhostButton}" Content="Undo" Margin="12,0,0,0" Padding="10,2" Command="{Binding UndoCommand}"
+                          Visibility="{Binding MessageHasUndo, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Undo" />
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Grid>
+
+          <!-- Conflicts page: what mods (and the game) provide twice, and who wins -->
+          <Grid x:Name="ConflictsPage" Visibility="{Binding ShowConflicts, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Margin="16,16,16,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Bg3}" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDiff}" FontSize="18" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Conflicts" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Instances of multiple enabled mods (or a mod and the basegame) defining the same thing, and which takes priority" Foreground="{StaticResource Muted}" FontSize="12.5" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding ConflictsShownText}" Foreground="{StaticResource Faint}" VerticalAlignment="Center" />
+            </Grid>
+            <DockPanel Grid.Row="1" Margin="12,0,12,8">
+              <CheckBox DockPanel.Dock="Right" Content="Exclude vanilla" IsChecked="{Binding ExcludeVanilla}" Margin="12,0,0,0"
+                        ToolTip="Hide conflicts where a single mod only replaces something of the game's" />
+              <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,12,0">
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="All" IsChecked="{Binding IsConflictAll}" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Files" IsChecked="{Binding IsConflictFile}" ToolTip="The same file path in more than one place" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Definitions" IsChecked="{Binding IsConflictDefinition}" ToolTip="The same technology, building, event... defined more than once" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Text" IsChecked="{Binding IsConflictText}" ToolTip="The same text key in more than one place" />
+              </StackPanel>
+              <TextBox Style="{StaticResource SearchBox}" Tag="Search conflicts" AutomationProperties.Name="Search conflicts"
+                       Text="{Binding ConflictSearch, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+            <Grid Grid.Row="2" Margin="12,0,12,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="280" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="400" />
+              </Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Pane}" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Bottom" Text="{Binding ConflictsNote}" Foreground="{StaticResource Faint}" FontSize="11.5" TextWrapping="Wrap" Margin="16,0,16,10">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers><DataTrigger Binding="{Binding ConflictsNote}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <ListBox x:Name="ConflictList" Margin="0,8" ItemsSource="{Binding ConflictsView}" SelectedItem="{Binding SelectedConflict}" AutomationProperties.Name="Conflicts">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ConflictRowViewModel}">
+                      <StackPanel Height="50" Margin="16,0,12,0" VerticalAlignment="Center">
+                        <DockPanel Margin="0,7,0,0">
+                          <Border DockPanel.Dock="Right" Background="{StaticResource Bg3}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding KindText}" FontSize="11" Foreground="{StaticResource Muted}" />
+                          </Border>
+                          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                        <TextBlock Text="{Binding Summary}" FontSize="11.5" Foreground="{StaticResource Faint}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </DockPanel>
+              <TextBlock Style="{StaticResource EmptyHint}" Text="{Binding ConflictsEmptyText}" />
+
+              <Border Grid.Column="2" Style="{StaticResource Pane}" />
+              <TextBlock Grid.Column="2" Text="Select a conflict to see which takes priority" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Style.Triggers><DataTrigger Binding="{Binding SelectedConflict}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    <Setter Property="Visibility" Value="Collapsed" />
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedConflict}">
+                <ScrollViewer.Style>
+                  <Style TargetType="ScrollViewer">
+                    <Style.Triggers><DataTrigger Binding="{Binding}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </ScrollViewer.Style>
+                <StackPanel Margin="16,14,16,16">
+                  <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Foreground="{StaticResource Faint}" Margin="0,2,0,12">
+                    <Run Text="{Binding KindText, Mode=OneWay}" /><Run Text=" in " /><Run Text="{Binding Domain, Mode=OneWay}" />
+                  </TextBlock>
+                  <TextBlock Text="{Binding WhyHeading}" Foreground="{StaticResource Faint}" Margin="0,0,0,2" />
+                  <TextBlock Text="{Binding Why}" TextWrapping="Wrap" />
+                  <TextBlock Text="The winning mod's descriptor asks to load after the mods it overrides, so this is probably on purpose." TextWrapping="Wrap"
+                             Foreground="{StaticResource Muted}" Margin="0,8,0,0">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers><DataTrigger Binding="{Binding Intended}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <TextBlock Text="In load order" Foreground="{StaticResource Faint}" Margin="0,16,0,6" />
+                  <ItemsControl ItemsSource="{Binding Entries}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border x:Name="Card" Background="{StaticResource Bg2}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,6">
+                          <StackPanel>
+                            <DockPanel>
+                              <Border x:Name="Pill" DockPanel.Dock="Right" Background="{StaticResource Bg3}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Top">
+                                <TextBlock x:Name="PillText" Text="{Binding State}" FontSize="11" Foreground="{StaticResource Muted}" />
+                              </Border>
+                              <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding Location}" FontFamily="Consolas" FontSize="11.5" Foreground="{StaticResource Faint}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                          </StackPanel>
+                        </Border>
+                        <DataTemplate.Triggers>
+                          <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Accent}" />
+                            <Setter TargetName="Pill" Property="Background" Value="{StaticResource AccentSoft}" />
+                            <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource Accent}" />
+                          </DataTrigger>
+                        </DataTemplate.Triggers>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+
+          <!-- Plugins page: mods that carry a plugin (code that runs inside the game) -->
+          <Grid x:Name="PluginsPage" Visibility="{Binding ShowPlugins, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Margin="16,16,16,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Bg3}" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlugin}" FontSize="18" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Plugins" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Runs code inside the game. Only approve plugins you trust." Foreground="{StaticResource Muted}" FontSize="12.5" />
+              </StackPanel>
+              <CheckBox Grid.Column="2" Content="Load plugins" IsChecked="{Binding PluginsEnabled}" VerticalAlignment="Center"
+                        ToolTip="The master switch. Off, the game starts with no plugins at all." />
+            </Grid>
+            <Border Grid.Row="1" Margin="16,0,16,10" Padding="14,10" CornerRadius="8" Background="{StaticResource Bg3}">
+              <StackPanel>
+                <TextBlock Text="{Binding OrionTitle}" FontWeight="SemiBold">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Foreground" Value="{StaticResource Text}" />
+                      <Style.Triggers><DataTrigger Binding="{Binding OrionNeedsAttention}" Value="True"><Setter Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger></Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding OrionDetail}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0" />
+                <TextBlock Text="{Binding BuildText}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,6,0,0" />
+                <TextBlock Text="{Binding HonestText}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding HonestNeedsAttention}" Value="True"><Setter Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger>
+                        <DataTrigger Binding="{Binding HonestText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <WrapPanel Margin="0,10,0,0">
+                  <Button Style="{StaticResource PrimaryButton}" Content="{Binding InstallOrionText}" Command="{Binding InstallOrionCommand}"
+                          Visibility="{Binding CanInstallOrion, Converter={StaticResource BoolToVis}}" Padding="14,7" Margin="0,0,8,0" />
+                  <Button Content="Remove Orion" Command="{Binding RemoveOrionCommand}" Visibility="{Binding CanRemoveOrion, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
+                  <Button Content="Allow plugins on this build…" Command="{Binding AllowBuildCommand}" Visibility="{Binding CanAllowBuild, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0"
+                          ToolTip="For a game version nobody has verified Orion against. Applies to this exact build only." />
+                  <Button Content="Stop allowing plugins on this build" Command="{Binding StopAllowingBuildCommand}" Visibility="{Binding CanStopAllowing, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Grid Grid.Row="2" Margin="12,0,12,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Pane}" />
+              <ListBox Margin="0,8" ItemsSource="{Binding PluginRows}" SelectedItem="{Binding SelectedPlugin}" ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Plugins">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Height="44" Margin="16,0,12,0">
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding StateText}" FontSize="11.5" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsWarn}" Value="True"><Setter Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger></Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Style="{StaticResource EmptyHint}" Text="{Binding PluginsEmptyText}" />
+
+              <Border Grid.Column="2" Style="{StaticResource Pane}" />
+              <TextBlock Grid.Column="2" Text="Select a plugin" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers><DataTrigger Binding="{Binding SelectedPlugin}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedPlugin}">
+                <ScrollViewer.Style>
+                  <Style TargetType="ScrollViewer">
+                    <Style.Triggers><DataTrigger Binding="{Binding}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                  </Style>
+                </ScrollViewer.Style>
+                <StackPanel Margin="20,16,20,20">
+                  <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Faint}" Margin="0,2,0,12" TextWrapping="Wrap" />
+
+                  <TextBlock Text="{Binding StateText}" FontWeight="SemiBold">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource Text}" />
+                        <Style.Triggers><DataTrigger Binding="{Binding IsWarn}" Value="True"><Setter Property="Foreground" Value="{StaticResource Warn}" /></DataTrigger></Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <TextBlock Text="{Binding StateDetail}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,0" />
+                  <TextBlock Text="{Binding TierText}" TextWrapping="Wrap" Foreground="{StaticResource Faint}" FontSize="11.5" Margin="0,6,0,0" />
+                  <TextBlock Text="{Binding LastRun}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,0"
+                             Visibility="{Binding HasLastRun, Converter={StaticResource BoolToVis}}" />
+
+                  <StackPanel Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Files" Foreground="{StaticResource Faint}" Margin="0,16,0,4" />
+                    <TextBlock Text="{Binding Files}" FontFamily="Consolas" FontSize="11.5" TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Style="{StaticResource PrimaryButton}" Content="Approve…" Command="{Binding DataContext.ApproveSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Visibility="{Binding NeedsApproval, Converter={StaticResource BoolToVis}}" Padding="14,7" />
+                    <Button Content="Take back approval" Command="{Binding DataContext.RevokeSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Visibility="{Binding IsApproved, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="8,0,0,0" />
+                    <Button Content="Open the folder" Command="{Binding DataContext.OpenSelectedPluginFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}" Padding="12,7" Margin="8,0,0,0" />
+                  </StackPanel>
+                  <CheckBox Content="Approve new versions automatically (follow updates)" IsChecked="{Binding FollowUpdates}" Margin="0,14,0,0"
+                            Visibility="{Binding IsApproved, Converter={StaticResource BoolToVis}}"
+                            ToolTip="Off by default. On, a changed file is approved without asking again: a compromised update would then load silently." />
+                  <StackPanel Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
+                  <CheckBox Content="Run this plugin in the current playset" IsChecked="{Binding OnHere}" IsEnabled="{Binding CanSetup}" Margin="0,8,0,0"
+                            ToolTip="Off, the mod's scripts still load but its plugin does not." />
+
+                  <TextBlock Text="Settings for this playset" FontWeight="SemiBold" Margin="0,22,0,8" />
+                  <TextBlock Text="{Binding SettingsNote}" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                             Visibility="{Binding HasSettingsNote, Converter={StaticResource BoolToVis}}" />
+                  <ItemsControl ItemsSource="{Binding Settings}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="0,0,0,16">
+                          <TextBlock Text="{Binding Name}" />
+                          <TextBlock Text="{Binding Description}" Foreground="{StaticResource Faint}" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                                     Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}" />
+                          <ToggleButton Style="{StaticResource SwitchToggle}" IsChecked="{Binding BoolValue}" HorizontalAlignment="Left" Margin="0,6,0,0"
+                                        Visibility="{Binding IsBool, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="{Binding Name}" />
+                          <TextBox Text="{Binding TextValue, UpdateSourceTrigger=LostFocus}" Margin="0,6,0,0" Visibility="{Binding IsText, Converter={StaticResource BoolToVis}}"
+                                   AutomationProperties.Name="{Binding Name}" />
+                          <ItemsControl ItemsSource="{Binding Options}" Margin="0,6,0,0" Focusable="False" Visibility="{Binding IsEnum, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate><RadioButton Style="{StaticResource TabButton}" Content="{Binding Name}" IsChecked="{Binding IsSelected}" /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Text="{Binding Hint}" Foreground="{StaticResource Faint}" FontSize="11.5" Margin="0,3,0,0" Visibility="{Binding HasHint, Converter={StaticResource BoolToVis}}" />
+                          <TextBlock Text="{Binding Error}" Foreground="{StaticResource Warn}" FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
+                                     Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Content="Reset to defaults" Command="{Binding DataContext.ResetPluginSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" HorizontalAlignment="Left" Padding="12,6"
+                          Visibility="{Binding HasSettings, Converter={StaticResource BoolToVis}}" />
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+
+          <!-- Logs page: the game's own log files -->
+          <Grid x:Name="LogsPage" Visibility="{Binding ShowLogs, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Margin="16,16,16,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Bg3}" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLog}" FontSize="18" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Logs" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Artemis's own log, and what Stellaris and its plugins write, live while the game runs. Problems with mods show up in error.log." Foreground="{StaticResource Muted}" FontSize="12.5" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource IconButton}" Command="{Binding CleanUpLogsCommand}" ToolTip="Clean up old logs…" AutomationProperties.Name="Clean up old logs">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDelete}" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Command="{Binding RefreshLogsCommand}" ToolTip="Read this log again from its end" AutomationProperties.Name="Refresh the logs">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoSync}" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Command="{Binding OpenLogFolderCommand}" ToolTip="Open the logs folder" AutomationProperties.Name="Open the logs folder">
+                  <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFolder}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+            <Grid Grid.Row="1" Margin="12,0,12,12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Pane}" />
+              <ListBox x:Name="LogList" Margin="0,8" ScrollViewer.VerticalScrollBarVisibility="Auto" ItemsSource="{Binding LogFiles}" SelectedItem="{Binding SelectedLog}" AutomationProperties.Name="Log files">
+                <ListBox.ItemTemplate>
+                  <DataTemplate><Border Height="30"><TextBlock Text="{Binding Name}" Margin="16,0" VerticalAlignment="Center" /></Border></DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Border Grid.Column="2" Style="{StaticResource Pane}" />
+              <TextBox x:Name="LogBox" Grid.Column="2" Style="{StaticResource MultiLineBox}" Background="{StaticResource Clear}" BorderThickness="0" Margin="4"
+                       IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto"
+                       FontFamily="Consolas" FontSize="12" AutomationProperties.Name="Log text" />
+              <TextBlock Grid.ColumnSpan="3" Style="{StaticResource EmptyHint}" Text="{Binding LogsEmptyText}" />
+            </Grid>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+    <Border Grid.RowSpan="2" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" IsHitTestVisible="False" />
+  </Grid>
+</Window>

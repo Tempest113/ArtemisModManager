@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Artemis mods page</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#0f0f11;--bg1:#18181b;--bg2:#1f1f23;--bg3:#27272a;--line:#2a2a2e;--text:#e4e4e7;--muted:#a1a1aa;--faint:#6b6b74;--hl:#4c8dff;--hlink:#04122e;--bad:#f87171;--warn:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;background:#09090b;color:var(--text);font:13px/1.45 Inter,"Segoe UI",system-ui,sans-serif;padding:22px 18px 60px}
+.pick{max-width:1280px;margin:0 auto 6px;display:flex;align-items:center;gap:8px;color:var(--muted)}
+.pick .g{color:var(--faint);margin:0 4px 0 10px}
+.pick button{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer}
+.pick button.on{border-color:#fff}
+.note{max-width:1280px;margin:0 auto 14px;color:var(--faint);font-size:12px;min-height:18px}
+.cap{max-width:1280px;margin:30px auto 10px;color:var(--muted)}
+.win{max-width:1280px;margin:0 auto;height:780px;background:var(--bg0);border:1px solid #26262b;border-radius:10px;overflow:hidden;display:grid;grid-template-rows:36px 1fr}
+.tb{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--line)}
+.logo{width:18px;height:18px;border-radius:50%;border:2px solid var(--hl);position:relative}
+.logo:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--hl);right:-3px;top:2px}
+.ti{font-size:16px;line-height:1}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border-radius:5px;padding:1px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.body{display:grid;grid-template-columns:212px 1fr;min-height:0}
+.nav{border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:2px}
+.lbl{font-size:11px;color:var(--faint);margin:0 6px 4px}
+.sel{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-weight:500}
+.launch{margin:8px 0 2px;display:flex;border-radius:7px;overflow:hidden;background:var(--hl);color:var(--hlink);font-weight:600}
+.launch .a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px}
+.launch .b{width:34px;display:grid;place-items:center;border-left:1px solid color-mix(in srgb,var(--hlink) 25%,transparent)}
+.lmenu{background:#1c1c20;border:1px solid #33333a;border-radius:8px;padding:5px;margin:4px 0 10px}
+.lmenu div{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;color:var(--muted);font-size:12px}
+.lmenu div.hv{background:var(--bg3);color:var(--text)}
+.ni{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;color:var(--muted);font-weight:500}
+.ni.on{background:var(--bg3);color:var(--text)}
+.ni .n{margin-left:auto;font-size:11px;color:var(--faint)}
+.main{display:grid;grid-template-rows:auto 1fr;min-width:0;min-height:0;background:var(--bg1);border-radius:10px 0 0 0}
+.ph{display:flex;align-items:center;gap:12px;padding:16px 20px 12px;border-bottom:1px solid var(--line)}
+.ph .ic{width:34px;height:34px;border-radius:8px;background:var(--bg3);display:grid;place-items:center}
+.ph h1{margin:0;font-size:18px;font-weight:600}.ph p{margin:0;color:var(--muted);font-size:12.5px}
+.tools{margin-left:auto;display:flex;gap:4px}.tools span{width:32px;height:32px;display:grid;place-items:center;border-radius:7px;color:var(--muted)}
+.panes{display:grid;grid-template-columns:1fr 1fr;min-height:0}
+.pane{display:grid;grid-template-rows:auto auto 1fr auto;min-width:0;min-height:0;border-right:1px solid var(--line)}
+.pane:last-child{border-right:0}
+.pt{display:flex;align-items:center;gap:4px;padding:10px 12px 6px;min-height:46px}
+.pt h2{font-size:13px;font-weight:600;margin:0 10px 0 4px;white-space:nowrap}
+.pt h2 small{color:var(--faint);font-weight:400;margin-left:4px}
+.tab{padding:4px 10px;border-radius:6px;color:var(--muted)}.tab.on{background:var(--bg3);color:var(--text)}
+.pt .r{margin-left:auto;display:flex;gap:2px;color:var(--muted);align-items:center}.pt .r>span:not(.find){width:28px;height:28px;display:grid;place-items:center}
+.find{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--faint);width:190px}
+.find .m{margin-left:auto;color:var(--muted);font-size:11px}
+.th{display:grid;align-items:center;gap:10px;padding:6px 14px;color:var(--faint);font-size:11.5px;border-bottom:1px solid var(--line)}
+.rows{overflow:hidden}
+.row{display:grid;align-items:center;gap:10px;padding:0 14px;height:38px;border-bottom:1px solid rgba(255,255,255,.025)}
+.L .th,.L .row{grid-template-columns:16px 36px 1fr 128px 64px 16px 26px}
+.R .th,.R .row{grid-template-columns:14px 26px 36px 1fr 112px 16px 32px}
+.grp{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--line);font-weight:600}
+.grp .c{color:var(--faint);font-weight:400}
+.septr{display:flex;align-items:center;gap:8px;height:30px;padding:0 14px;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.septr:after{content:"";flex:1;height:1px;background:var(--line)}
+.septr .c{color:var(--faint);letter-spacing:0}
+.cb{width:14px;height:14px;border:1.5px solid #52525b;border-radius:4px}
+.cb.on{background:var(--text);border-color:var(--text)}
+.th1{width:36px;height:20px;border-radius:3px}
+.nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cats{display:flex;gap:4px;overflow:hidden}
+.cat{background:var(--bg3);color:var(--muted);border-radius:4px;padding:0 6px;font-size:11px;white-space:nowrap}
+.ver{color:var(--faint);font-size:11.5px;white-space:nowrap}
+.ver.old{color:var(--warn)}
+.add{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line)}
+.add.in{background:color-mix(in srgb,var(--hl) 18%,transparent);color:var(--hl);border-color:transparent}
+.tg{width:30px;height:17px;border-radius:9px;background:#3f3f46;position:relative}
+.tg:after{content:"";position:absolute;width:13px;height:13px;border-radius:50%;background:#a1a1aa;top:2px;left:2px}
+.tg.on{background:var(--hl)}.tg.on:after{left:15px;background:var(--hlink)}
+.idx{color:var(--faint);text-align:right;font-size:11.5px}
+.idx.edit{border:1px solid var(--hl);border-radius:4px;color:var(--text);text-align:center;padding:1px 0}
+.drag{color:#3f3f46}
+.row.selr{background:color-mix(in srgb,var(--hl) 9%,transparent);box-shadow:inset 2px 0 0 var(--hl)}
+.row.hit .nm mark{background:color-mix(in srgb,var(--hl) 30%,transparent);color:var(--text);border-radius:2px}
+.badge{font-size:11px;color:var(--bad)}
+.dim .nm{color:var(--faint)}
+.trophy{color:var(--faint);font-size:13px}
+.selbar{display:flex;align-items:center;gap:12px;margin:8px;padding:8px 12px;background:var(--bg3);border-radius:8px;color:var(--muted)}
+.selbar b{color:var(--text);font-weight:500}
+.selbar .act{display:flex;align-items:center;gap:6px;padding:3px 8px;border-radius:6px;color:var(--text)}
+/* layout options */
+.opts{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.opt{background:var(--bg1);border:1px solid #26262b;border-radius:10px;padding:12px}
+.opt.rec{border-color:var(--hl)}
+.opt h4{margin:8px 0 2px;font-size:13px;font-weight:600}.opt p{margin:0;color:var(--muted);font-size:12px}
+.sch{height:110px;display:grid;gap:4px;background:var(--bg0);border-radius:6px;padding:6px}
+.sch div{background:var(--bg3);border-radius:3px}
+.sch .hl{background:color-mix(in srgb,var(--hl) 35%,var(--bg3))}
+</style></head><body>
+<div class="pick">Highlight:
+ <span class="g">Blues</span>
+ <button style="background:#4c8dff" data-hl="#4c8dff" data-ink="#04122e" data-n="Signal blue #4c8dff" class="on"></button>
+ <button style="background:#3b82f6" data-hl="#3b82f6" data-ink="#ffffff" data-n="Royal #3b82f6"></button>
+ <button style="background:#60a5fa" data-hl="#60a5fa" data-ink="#04152b" data-n="Sky #60a5fa"></button>
+ <button style="background:#6b7cff" data-hl="#6b7cff" data-ink="#ffffff" data-n="Periwinkle #6b7cff"></button>
+ <button style="background:#5b8fb9" data-hl="#5b8fb9" data-ink="#04121e" data-n="Steel #5b8fb9"></button>
+ <span class="g">Reds</span>
+ <button style="background:#e5484d" data-hl="#e5484d" data-ink="#ffffff" data-n="Signal red #e5484d" data-red="1"></button>
+ <button style="background:#f43f5e" data-hl="#f43f5e" data-ink="#ffffff" data-n="Rose #f43f5e" data-red="1"></button>
+ <button style="background:#c2410c" data-hl="#c2410c" data-ink="#ffffff" data-n="Rust #c2410c" data-red="1"></button>
+ <button style="background:#b4364a" data-hl="#b4364a" data-ink="#ffffff" data-n="Crimson #b4364a" data-red="1"></button>
+ <button style="background:#ff6b5e" data-hl="#ff6b5e" data-ink="#2a0604" data-n="Coral #ff6b5e" data-red="1"></button>
+</div>
+<div class="note" id="note">Signal blue #4c8dff</div>
+
+<div class="win">
+ <div class="tb"><div class="logo"></div><b style="font-weight:600">Artemis</b><span style="color:var(--faint)">Stellaris mod manager</span>
+  <span style="flex:1"></span><span class="chip"><i class="ti ti-circle-check" style="font-size:12px"></i>4.5.2 supported</span><i class="ti ti-bell" style="color:var(--muted)"></i>
+  <span style="width:1px;height:16px;background:var(--line);margin:0 6px"></span><i class="ti ti-minus" style="color:var(--muted)"></i><i class="ti ti-square" style="color:var(--muted);font-size:13px"></i><i class="ti ti-x" style="color:var(--muted)"></i></div>
+ <div class="body">
+  <div class="nav">
+   <div class="lbl">Playset</div>
+   <div class="sel">Main playset<i class="ti ti-selector" style="color:var(--faint)"></i></div>
+   <div class="launch"><span class="a"><i class="ti ti-player-play-filled"></i>Launch</span><span class="b"><i class="ti ti-chevron-down"></i></span></div>
+   <div class="lmenu"><div class="hv"><i class="ti ti-player-skip-forward"></i>Continue last save</div><div><i class="ti ti-device-floppy"></i>Apply without launching</div><div><i class="ti ti-plug-off"></i>Launch without plugins</div></div>
+   <div class="ni on"><i class="ti ti-stack-2"></i>Mods</div>
+   <div class="ni"><i class="ti ti-arrows-diff"></i>Conflicts<span class="n" style="color:var(--bad)">7</span></div>
+   <div class="ni"><i class="ti ti-plug"></i>Plugins<span class="n">1</span></div>
+   <div class="ni"><i class="ti ti-tags"></i>Categories</div>
+   <div class="ni"><i class="ti ti-file-text"></i>Logs</div>
+   <span style="flex:1"></span>
+   <div class="ni"><i class="ti ti-settings"></i>Settings</div>
+  </div>
+  <div class="main">
+   <div class="ph"><div class="ic"><i class="ti ti-stack-2" style="font-size:18px"></i></div><div><h1>Mods</h1><p>Tick mods on the left to add them; order and switch them on the right.</p></div>
+    <div class="tools"><span title="Install from archive"><i class="ti ti-file-plus"></i></span><span title="Open mod folder"><i class="ti ti-folder"></i></span><span title="Rescan"><i class="ti ti-refresh"></i></span><span title="Export / import playset"><i class="ti ti-file-export"></i></span><span title="More"><i class="ti ti-dots"></i></span></div></div>
+   <div class="panes">
+    <div class="pane L">
+     <div class="pt"><span title="Collapse the library" style="color:var(--muted);width:24px;display:grid;place-items:center"><i class="ti ti-layout-sidebar-left-collapse"></i></span><h2>Installed<small>50</small></h2><span class="tab">All</span><span class="tab on">Categories</span><span class="tab">Source</span><span class="tab"><i class="ti ti-plus" style="font-size:13px"></i></span><span class="r"><span><i class="ti ti-filter"></i></span><span><i class="ti ti-search"></i></span></span></div>
+     <div class="th"><span class="cb"></span><span></span><span>Name <i class="ti ti-arrow-down" style="font-size:11px"></i></span><span>Categories</span><span>Game</span><span></span><span></span></div>
+     <div class="rows" id="left"></div>
+     <div class="selbar"><i class="ti ti-x"></i><b>2 selected</b><span style="flex:1"></span><span class="act"><i class="ti ti-plus"></i>Add to playset</span><span class="act"><i class="ti ti-tags"></i>Set categories</span><span class="act"><i class="ti ti-dots"></i></span></div>
+    </div>
+    <div class="pane R">
+     <div class="pt"><h2>Load order<small>16 on</small></h2><span class="tab on">Order</span><span class="tab">Categories</span><span class="r"><span class="find"><i class="ti ti-search" style="font-size:13px"></i>ui ov<span class="m">2 of 3</span><i class="ti ti-chevron-up" style="font-size:13px;color:var(--muted)"></i><i class="ti ti-chevron-down" style="font-size:13px;color:var(--muted)"></i></span><span title="Add separator"><i class="ti ti-separator-horizontal"></i></span></span></div>
+     <div class="th"><span></span><span>#</span><span></span><span>Name</span><span>Categories</span><span></span><span></span></div>
+     <div class="rows" id="right"></div>
+     <div></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<p class="cap">Should the Mods page stay two-pane? Four ways to lay out the same job (the one with a highlighted border is the recommendation):</p>
+<div class="opts">
+ <div class="opt rec"><div class="sch" style="grid-template-columns:16px 1fr"><div></div><div class="hl"></div></div><h4>Two panes, collapsible library</h4><p>Irony's layout. The library folds into a thin strip when you're done picking, so the load order gets the full width.</p></div>
+ <div class="opt"><div class="sch" style="grid-template-columns:1fr 1fr"><div></div><div class="hl"></div></div><h4>Two panes, fixed</h4><p>Irony as is. Always both lists, but names truncate and there's no room for details.</p></div>
+ <div class="opt"><div class="sch" style="grid-template-columns:1fr"><div class="hl"></div></div><h4>One table (Vortex)</h4><p>Every installed mod in one list with toggles; "load order" is a sort mode. Simplest, but adding and ordering blur together.</p></div>
+ <div class="opt"><div class="sch" style="grid-template-columns:1fr 70px"><div class="hl"></div><div></div></div><h4>Load order + add drawer</h4><p>The playset fills the page; "Add mods" opens a side drawer or Ctrl+K search. Focused, but browsing your library is a step away.</p></div>
+</div>
+
+<script>
+const CAT={F:'Framework',G:'Gameplay',C:'Content',X:'Graphics',U:'UI',B:'Fixes',P:'Compatibility'};
+const M=[
+ ['!!!Universal Resource Patch [2.4+]','BP','',0,'v4.*.*'],['Ethics & Civics: Bug Branch','BG','in',0,'v4.4'],['Acquisition of Technology','G','',0,'v4.5.*'],
+ ['Gigastructural Engineering & More (4.5)','GC','',4,'v4.5.*'],['Dawn Of Ascension','GC','',0,'v4.5.*'],['+4 Traditions & Ascension','G','in',0,'v4.4.4'],
+ ['No More Caught In The Eye','G','in',0,'v3.13.2'],
+ ['UI Overhaul Dynamic','U','in',0,'v4.5.*',1],['UI Overhaul Dynamic - Tiny Outliner','UP','in',0,'v4.4.*',1],['Old Main Menu Layout','U','in',0,'v4.*.*',1],
+ ['! Immersive Galaxy and Skybox','X','in',0,'*',1],['Machine Shipset','X','in',0,'v4.*',1],['Fleet Formation Mod - No Trails v2.0','XG','in',0,'v4.*']];
+const hue=s=>[...s].reduce((a,c)=>a*31+c.charCodeAt(0)>>>0,7)%360;
+const th=n=>`<div class="th1" style="background:linear-gradient(135deg,hsl(${hue(n)} 25% 38%),hsl(${(hue(n)+40)%360} 25% 20%))"></div>`;
+const cats=k=>`<div class="cats">${[...k].map(c=>`<span class="cat">${CAT[c]}</span>`).join('')}</div>`;
+const trophy=a=>a?'<i class="ti ti-trophy trophy" title="Achievement compatible"></i>':'<span></span>';
+const L=document.getElementById('left');
+[['Fixes','B'],['Gameplay','G'],['UI','U'],['Graphics','X']].forEach(([g,k])=>{
+ const ms=M.filter(m=>m[1][0]===k); if(!ms.length) return;
+ L.insertAdjacentHTML('beforeend',`<div class="grp"><i class="ti ti-chevron-down" style="color:var(--faint)"></i>${g}<span class="c">${ms.length}</span></div>`+ms.map(m=>`<div class="row"><span class="cb ${m[0].startsWith('Acq')||m[0].startsWith('Dawn')?'on':''}"></span>${th(m[0])}<span class="nm">${m[0]}</span>${cats(m[1])}<span class="ver ${m[4].startsWith('v3')?'old':''}">${m[4].startsWith('v3')?'<i class="ti ti-alert-triangle" style="font-size:11px"></i> ':''}${m[4]}</span>${trophy(m[5])}<span class="add ${m[2]}"><i class="ti ti-${m[2]?'check':'plus'}" style="font-size:13px"></i></span></div>`).join(''));
+});
+const R=document.getElementById('right');
+const order=[['§','Base and fixes'],'Ethics & Civics: Bug Branch','No More Caught In The Eye',['§','Gameplay'],'Orbital Ring Logic','Gigastructural Engineering & More (4.5)','+4 Traditions & Ascension',['§','Interface'],'UI Overhaul Dynamic','UI Overhaul Dynamic - Tiny Outliner','Old Main Menu Layout',['§','Graphics'],'! Immersive Galaxy and Skybox','Machine Shipset','Fleet Formation Mod - No Trails v2.0','More Ship Names'];
+let i=0;
+order.forEach(n=>{
+ if(Array.isArray(n)){const cnt=order.slice(order.indexOf(n)+1).findIndex(x=>Array.isArray(x));R.insertAdjacentHTML('beforeend',`<div class="septr"><i class="ti ti-chevron-down" style="font-size:12px"></i>${n[1]}<span class="c">${cnt<0?order.length-order.indexOf(n)-1:cnt}</span></div>`);return;}
+ i++;const m=M.find(x=>x[0]===n)||[n,n==='Orbital Ring Logic'?'G':'C','',0,'v4.5.*',n==='More Ship Names'];const plug=n==='Orbital Ring Logic',off=n==='More Ship Names',hit=n.startsWith('UI Overhaul');
+ const name=hit?n.replace('UI Ov','<mark>UI Ov</mark>'):n;
+ R.insertAdjacentHTML('beforeend',`<div class="row ${plug?'selr':''} ${off?'dim':''} ${hit?'hit':''}"><i class="ti ti-grip-vertical drag" style="font-size:14px"></i><span class="idx ${plug?'edit':''}">${i}</span>${th(n)}<span class="nm">${name}${plug?' <span class="chip" style="margin-left:6px"><i class="ti ti-plug" style="font-size:11px"></i>Plugin</span>':''}${m[3]?` <span class="badge"><i class="ti ti-arrows-diff" style="font-size:11px"></i> ${m[3]}</span>`:''}</span>${cats(m[1])}${trophy(m[5])}<span class="tg ${off?'':'on'}"></span></div>`)});
+document.querySelectorAll('.pick button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pick button').forEach(x=>x.classList.remove('on'));b.classList.add('on');const s=document.documentElement.style;s.setProperty('--hl',b.dataset.hl);s.setProperty('--hlink',b.dataset.ink);s.setProperty('--bad',b.dataset.red?'#fbbf24':'#f87171');document.getElementById('note').textContent=b.dataset.n+(b.dataset.red?' · conflicts switch to amber so red keeps one meaning':'')});
+</script></body></html>

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Artemis.App</RootNamespace>
+    <AssemblyName>Artemis</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- The logo, made from Assets\logo-source.webp by manager\tools\make_logo.py -->
+  <ItemGroup>
+    <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <ProjectReference Include="..\Artemis.Core\Artemis.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Orion's files, built by orion/build.bat, travel with the app so it can install them. Absent until that script has run; -p:IncludeOrion=false leaves them out (a build without the in-game loader). -->
+  <ItemGroup Condition="'$(IncludeOrion)' != 'false' And Exists('../../../orion/build/winmm.dll') And Exists('../../../orion/build/orion.dll')">
+    <Content Include="../../../orion/build/winmm.dll" Link="orion/winmm.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../../orion/build/orion.dll" Link="orion/orion.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

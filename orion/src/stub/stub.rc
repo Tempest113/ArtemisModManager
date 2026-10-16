@@ -1,0 +1,30 @@
+#include <winver.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 0,1,0,0
+PRODUCTVERSION 0,1,0,0
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      // Artemis recognises its own stub by a company name that starts with "Artemis" (D14, D20).
+      VALUE "CompanyName", "Artemis (unofficial community project)"
+      VALUE "FileDescription", "Artemis winmm stub: forwards winmm and starts the Orion plugin loader"
+      VALUE "FileVersion", "0.1.0"
+      VALUE "InternalName", "winmm"
+      VALUE "OriginalFilename", "winmm.dll"
+      VALUE "ProductName", "Artemis"
+      VALUE "ProductVersion", "0.1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

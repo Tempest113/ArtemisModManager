@@ -1,0 +1,33 @@
+<Window x:Class="Artemis.App.Views.ImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize" SizeToContent="Height" Width="480" MaxHeight="640" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}"
+        FontFamily="{StaticResource UiFont}" FontSize="13" UseLayoutRounding="True">
+  <Border BorderBrush="{StaticResource LineStrong}" BorderThickness="1" MouseLeftButtonDown="OnDrag">
+    <StackPanel Margin="24,22,24,20">
+      <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock x:Name="BodyText" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,8,0,0" />
+      <Border Margin="0,16,0,0" Background="{StaticResource PaneBg}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
+          <ItemsControl x:Name="Choices" Margin="12,8">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,6">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Faint}" FontSize="11.5" />
+                  </StackPanel>
+                </CheckBox>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+        <Button x:Name="CancelButton" Content="Skip" IsCancel="True" Margin="0,0,8,0" MinWidth="80" />
+        <Button x:Name="OkButton" Style="{StaticResource PrimaryButton}" IsDefault="True" MinWidth="80" Click="OnOk" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>
