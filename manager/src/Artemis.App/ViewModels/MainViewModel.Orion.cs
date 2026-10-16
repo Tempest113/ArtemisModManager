@@ -2,6 +2,7 @@ using Artemis.Core.Game;
 using Artemis.Core.IO;
 using Artemis.Core.Logging;
 using Artemis.Core.Plugins;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -20,7 +21,7 @@ public sealed partial class MainViewModel
     [ObservableProperty] private string _orionTitle = "";
     [ObservableProperty] private string _orionDetail = "";
     [ObservableProperty] private bool _orionNeedsAttention;
-    [ObservableProperty] private string _installOrionText = "Install Orion…";
+    [ObservableProperty] private string _installOrionText = Loc.T("plug.orion_install_button");
     [ObservableProperty] private bool _canInstallOrion;
     [ObservableProperty] private bool _canRemoveOrion;
     [ObservableProperty] private string _buildText = "";
@@ -39,40 +40,40 @@ public sealed partial class MainViewModel
         var available = status.AvailableVersion is not null;
         (OrionTitle, OrionDetail, OrionNeedsAttention) = status.State switch
         {
-            OrionState.Installed => ($"Orion {status.InstalledVersion} is installed.", "It loads the plugins you approved when Stellaris starts. It does nothing in the Paradox Launcher.", false),
-            OrionState.NotInstalled => ("Orion isn't installed.", "Plugins can't load until it is. Your approvals and settings are saved and apply once it is.", true),
-            OrionState.NeedsRepair => ("Orion needs repair.", "Part of it is missing; Steam's \"verify files\" removes it. Artemis puts it back the next time you launch, or you can repair it now.", true),
-            OrionState.Outdated => ($"A different Orion ({status.AvailableVersion}) came with this Artemis.", $"Installed: {status.InstalledVersion}. Artemis updates it the next time you launch, or you can update it now.", true),
-            OrionState.ForeignStub => ("Another winmm.dll is in the Stellaris folder.", "Artemis never replaces a file it didn't put there. Move that file out of the folder to install Orion.", true),
-            _ => ("Orion isn't included with this copy of Artemis.", "Plugins can't load. Your approvals and settings are saved.", true),
+            OrionState.Installed => (Loc.T("plug.orion_installed_title", ("version", status.InstalledVersion)), Loc.T("plug.orion_installed_detail"), false),
+            OrionState.NotInstalled => (Loc.T("plug.orion_missing_title"), Loc.T("plug.orion_missing_detail"), true),
+            OrionState.NeedsRepair => (Loc.T("plug.orion_repair_title"), Loc.T("plug.orion_repair_detail"), true),
+            OrionState.Outdated => (Loc.T("plug.orion_outdated_title", ("version", status.AvailableVersion)), Loc.T("plug.orion_outdated_detail", ("installed", status.InstalledVersion)), true),
+            OrionState.ForeignStub => (Loc.T("plug.orion_stub_title"), Loc.T("plug.orion_stub_detail"), true),
+            _ => (Loc.T("plug.orion_absent_title"), Loc.T("plug.orion_absent_detail"), true),
         };
         (InstallOrionText, CanInstallOrion) = status.State switch
         {
-            OrionState.NotInstalled => ("Install Orion…", true),
-            OrionState.NeedsRepair => ("Repair Orion", available),
-            OrionState.Outdated => ("Update Orion", true),
-            _ => ("Install Orion…", false),
+            OrionState.NotInstalled => (Loc.T("plug.orion_install_button"), true),
+            OrionState.NeedsRepair => (Loc.T("plug.orion_repair_button"), available),
+            OrionState.Outdated => (Loc.T("plug.orion_update_button"), true),
+            _ => (Loc.T("plug.orion_install_button"), false),
         };
         CanRemoveOrion = status.State is OrionState.Installed or OrionState.NeedsRepair or OrionState.Outdated;
 
         _buildId = GameBuild.IdOf(_game.ExePath);
         var support = _buildId is null ? BuildSupport.Unknown : _builds.Check(_buildId);
         var shown = GameVersion.Length > 0 ? $"{_buildId} ({GameVersion})" : _buildId;
-        BuildText = _buildId is null ? "Artemis couldn't read the game's build from stellaris.exe, so it can't say whether Orion supports it."
+        BuildText = _buildId is null ? Loc.T("plug.build_unreadable")
             : support switch
             {
-                BuildSupport.Verified => $"Game build {shown}: verified. Orion can load plugins on it.",
-                BuildSupport.AllowedByUser => $"Game build {shown}: you allowed plugins on this exact build. A game update asks again.",
-                _ => $"Game build {shown}: not verified. Orion loads no plugins on a build it hasn't verified.",
+                BuildSupport.Verified => Loc.T("plug.build_verified", ("build", shown)),
+                BuildSupport.AllowedByUser => Loc.T("plug.build_allowed", ("build", shown)),
+                _ => Loc.T("plug.build_unverified", ("build", shown)),
             };
         CanAllowBuild = _buildId is not null && support == BuildSupport.Unknown && GameVersion.Length > 0;
         CanStopAllowing = support == BuildSupport.AllowedByUser;
 
         (HonestText, HonestNeedsAttention) = _lastStatus?.Honest switch
         {
-            { State: "mounted" } h => ($"Last run: {h.Detail} The game's checksum shows them, so achievements and multiplayer checks notice them.", false),
-            { State: "failed" } h => ($"Last run: Orion could not add the plugins to the game's checksum. {h.Detail}", true),
-            { State: "pending" } => ("Last run: the game closed before Orion had added the plugins to its checksum.", true),
+            { State: "mounted" } h => (Loc.T("plug.honest_mounted", ("detail", h.Detail)), false),
+            { State: "failed" } h => (Loc.T("plug.honest_failed", ("detail", h.Detail)), true),
+            { State: "pending" } => (Loc.T("plug.honest_pending"), true),
             _ => ("", false),
         };
     }
@@ -83,17 +84,14 @@ public sealed partial class MainViewModel
         if (_game is null || _orion is null) return;
         var first = _orion.Inspect(_game.GameDir).State == OrionState.NotInstalled;
         if (first && !_dialogs.Confirm(
-                "Orion is the part that loads plugins (DLL mods) into Stellaris. Installing it puts one file, winmm.dll, in the Stellaris folder:\n\n"
-                + $"   {_game.GameDir}\n\n"
-                + "Windows loads that file every time Stellaris starts. It does nothing in the Paradox Launcher, and it loads no plugin you haven't approved. Plugins run with the same permissions as you.\n\n"
-                + "You can remove it any time from this page. Steam's \"verify files\" deletes it; Artemis puts it back the next time you launch.", "Install")) return;
+                Loc.T("plug.orion_install_confirm", ("dir", _game.GameDir)), Loc.T("plug.install"))) return;
         Try(() =>
         {
             _orion.Install(_game.GameDir);
             _settings.OrionInstalled = true;
             SaveSettings();
             AppLog.Info(first ? "Installed Orion" : "Repaired or updated Orion");
-            Notify(first ? "Orion is installed." : "Orion is up to date.");
+            Notify(Loc.T(first ? "plug.orion_is_installed" : "plug.orion_up_to_date"));
         });
         RefreshOrion();
         RefreshNotices();
@@ -103,14 +101,14 @@ public sealed partial class MainViewModel
     private void RemoveOrion()
     {
         if (_game is null || _orion is null) return;
-        if (!_dialogs.Confirm("Remove Orion? Stellaris goes back to starting without anything of ours, and no plugin loads. Your approvals and settings are kept.", "Remove")) return;
+        if (!_dialogs.Confirm(Loc.T("plug.orion_remove_confirm"), Loc.T("plug.remove"))) return;
         Try(() =>
         {
             _orion.Remove(_game.GameDir);
             _settings.OrionInstalled = false;
             SaveSettings();
             AppLog.Info("Removed Orion");
-            Notify("Orion is removed.");
+            Notify(Loc.T("plug.orion_removed"));
         });
         RefreshOrion();
         RefreshNotices();
@@ -121,9 +119,7 @@ public sealed partial class MainViewModel
     {
         if (_buildId is null || _builds is null) return;
         if (!_dialogs.Confirm(
-                $"Orion has no verified data for this game build ({_buildId}, {GameVersion}), so it loads no plugins here.\n\n"
-                + "If you allow it, plugins that only use what Orion hands them (their settings, logging) will work. A plugin that changes the game's own code is on its own on a build nobody has checked, and can crash the game.\n\n"
-                + "This applies to this exact build only; after a game update Artemis asks again.", "Allow")) return;
+                Loc.T("plug.allow_build_confirm", ("build", _buildId), ("version", GameVersion)), Loc.T("plug.allow"))) return;
         Try(() =>
         {
             _builds.Allow(_buildId, GameVersion);

@@ -10,6 +10,7 @@ using Artemis.Core.Logging;
 using Artemis.Core.Mods;
 using Artemis.Core.Playsets;
 using Artemis.Core.Plugins;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -76,20 +77,22 @@ public sealed partial class MainViewModel
         if (_lastStatus?.Plugins.FirstOrDefault(p => string.Equals(p.Mod, key, StringComparison.OrdinalIgnoreCase)) is not { } p) return "";
         var when = _lastStatus.StartedUtc is { } t ? $" ({t.ToLocalTime():d MMM HH:mm})" : "";
         // Orion's own sentence says more than the short reason does ("returned 3", which game build, which plugin it clashes with)
-        return p.State == "loaded" ? $"Last run: loaded{when}" : $"Last run: {p.State}{(p.Reason is null ? "" : $", {ReasonText(p.Reason, p.Detail)}")}{when}";
+        return p.State == "loaded" ? Loc.T("plug.last_run_loaded", ("when", when))
+            : p.Reason is null ? Loc.T("plug.last_run_state", ("state", p.State), ("when", when))
+            : Loc.T("plug.last_run_state_reason", ("state", p.State), ("reason", ReasonText(p.Reason, p.Detail)), ("when", when));
     }
 
     private static string ReasonText(string reason, string? detail = null) => reason switch
     {
-        "untrusted" => "not approved",
-        "hashChanged" => "changed since approved",
-        "buildUnsupported" => "not for this game build",
-        "dependencyMissing" => "a plugin it needs wasn't there",
-        "incompatible" => "it clashes with another plugin",
-        "fileMissing" => "its file is missing",
-        "apiUnsupported" => "it needs a newer Orion",
-        "disabled" => "switched off",
-        "error" => string.IsNullOrWhiteSpace(detail) ? "it reported an error" : detail,
+        "untrusted" => Loc.T("plug.reason_untrusted"),
+        "hashChanged" => Loc.T("plug.reason_hash_changed"),
+        "buildUnsupported" => Loc.T("plug.reason_build_unsupported"),
+        "dependencyMissing" => Loc.T("plug.reason_dependency_missing"),
+        "incompatible" => Loc.T("plug.reason_incompatible"),
+        "fileMissing" => Loc.T("plug.reason_file_missing"),
+        "apiUnsupported" => Loc.T("plug.reason_api_unsupported"),
+        "disabled" => Loc.T("plug.reason_disabled"),
+        "error" => string.IsNullOrWhiteSpace(detail) ? Loc.T("plug.reason_error") : detail,
         _ => reason,
     };
 
@@ -128,7 +131,7 @@ public sealed partial class MainViewModel
         foreach (var row in PluginRows) row.Refresh();
         foreach (var row in _installedRows.Values) row.RefreshMarks();
         foreach (var row in LoadOrder) row.RefreshMarks();
-        PluginsEmptyText = PluginRows.Count == 0 ? "No installed mod has a plugin. A mod with a plugin has a modloader.json in its folder." : "";
+        PluginsEmptyText = PluginRows.Count == 0 ? Loc.T("plug.plugins_empty") : "";
         RefreshOrion();
         if (Filter == InstalledFilter.WithPlugin) OnFilterChanged(Filter);
         RefreshDetails();
@@ -142,17 +145,17 @@ public sealed partial class MainViewModel
     {
         if (mod.Plugin is null) return null;
         var state = PluginStateOf(mod.Key);
-        if (PluginIsOff(mod.Key)) return ("Plugin off", false, "This mod has a plugin, switched off in this playset.");
+        if (PluginIsOff(mod.Key)) return (Loc.T("plug.mark_off"), false, Loc.T("plug.mark_off_tip"));
         var tip = state switch
         {
-            PluginState.Approved => "Has a plugin, and you approved it. It runs code inside the game.",
-            PluginState.NotApproved => "Has a plugin you haven't approved. It is skipped until you do (Plugins page).",
-            PluginState.Changed => "Has a plugin that changed since you approved it. It is skipped until you approve it again.",
-            PluginState.WrongBuild => "Has a plugin made for another game version. It is skipped.",
-            PluginState.MissingFiles => "Has a plugin whose file is missing.",
-            _ => $"Has a plugin that can't be used: {mod.Plugin.Error}",
+            PluginState.Approved => Loc.T("plug.mark_tip_approved"),
+            PluginState.NotApproved => Loc.T("plug.mark_tip_not_approved"),
+            PluginState.Changed => Loc.T("plug.mark_tip_changed"),
+            PluginState.WrongBuild => Loc.T("plug.mark_tip_wrong_build"),
+            PluginState.MissingFiles => Loc.T("plug.mark_tip_missing_files"),
+            _ => Loc.T("plug.mark_tip_unusable", ("error", mod.Plugin.Error)),
         };
-        return ("Plugin", state != PluginState.Approved, tip);
+        return (Loc.T("plug.mark_plugin"), state != PluginState.Approved, tip);
     }
 
     public bool HasPlugin(string key) => _installed.TryGetValue(key, out var m) && m.Plugin is not null;
@@ -167,12 +170,12 @@ public sealed partial class MainViewModel
         _pluginHashes[mod.Key] = hashes;
         if (!manifest.Files.All(hashes.ContainsKey))
         {
-            ShowError($"\"{mod.Name}\" lists a plugin file that isn't in its folder, so it can't be approved.");
+            ShowError(Loc.T("plug.approve_file_missing", ("name", mod.Name)));
             return false;
         }
         var files = string.Join("\n", manifest.Files.Select(f => $"   {f}   SHA-256 {hashes[f][..12]}…"));
-        var changed = Trust.Get(mod.Key) is not null ? "\n\nThis plugin was approved before, and a file has changed since." : "";
-        if (!_dialogs.Confirm($"\"{mod.Name}\" runs code inside the game, with the same permissions as you.{changed}\n\nIt would load:\n{files}\n\nOnly approve plugins you trust. Artemis asks again if one of these files changes.", "Approve")) return false;
+        var changed = Trust.Get(mod.Key) is not null ? Loc.T("plug.approve_changed") : "";
+        if (!_dialogs.Confirm(Loc.T("plug.approve_prompt", ("name", mod.Name), ("changed", changed), ("files", files)), Loc.T("plug.approve"))) return false;
         try { Trust.Approve(mod.Key, mod.Name, hashes, autoApprove: mod.Source == ModSource.Local); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowError(ex.Message, ex); return false; }
         AppLog.Info($"Approved the plugin of \"{mod.Name}\" ({string.Join(", ", manifest.Files)})");
@@ -200,7 +203,7 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void RevokeSelectedPlugin()
     {
-        if (SelectedPlugin is not { } p || !_dialogs.Confirm($"Take back your approval of \"{p.Name}\"? The game starts without the plugin until you approve it again.", "Take back")) return;
+        if (SelectedPlugin is not { } p || !_dialogs.Confirm(Loc.T("plug.revoke_prompt", ("name", p.Name)), Loc.T("plug.take_back"))) return;
         Trust.Revoke(p.Key);
         AppLog.Info($"Took back the approval of the plugin of \"{p.Name}\"");
         RefreshPluginStates();
@@ -278,13 +281,13 @@ public sealed partial class MainViewModel
 
         if (StubCheck.Find(_game.GameDir) is { } stub && !_settings.DismissedNotices.Contains(stub.NoticeId))
             wanted.Add(new NoticeViewModel(stub.NoticeId,
-                "The Stellaris folder has a winmm.dll that Artemis didn't put there (from an older experiment or another tool). A file like that can stop the Paradox Launcher or the game from starting. If they won't start, move it out of the folder. Artemis never touches it.",
-                "Show the folder", () => Open(_game.GameDir), DismissNotice));
+                Loc.T("plug.notice_stub"),
+                Loc.T("plug.show_folder"), () => Open(_game.GameDir), DismissNotice));
 
         if (!GameRunning && OrionFiles.ReadMarker(_game.UserDir) is { } marker)
         {
             var name = _installed.GetValueOrDefault(marker.Mod)?.Name ?? marker.Mod;
-            wanted.Add(new NoticeViewModel("", $"The game stopped while it was loading the plugin of \"{name}\". It may be the cause.", "Switch the plugin off here",
+            wanted.Add(new NoticeViewModel("", Loc.T("plug.notice_marker", ("name", name)), Loc.T("plug.switch_plugin_off"),
                 () =>
                 {
                     SetPluginOnHere(marker.Mod, false);
@@ -298,14 +301,16 @@ public sealed partial class MainViewModel
             var id = $"status|{started.Ticks}";
             if (!_settings.DismissedNotices.Contains(id))
                 wanted.Add(new NoticeViewModel(id,
-                    $"Last time, {(problems.Count == 1 ? "1 plugin" : $"{problems.Count} plugins")} didn't load: " + string.Join("; ", problems.Take(3).Select(p => $"{_installed.GetValueOrDefault(p.Mod)?.Name ?? p.Mod} ({(p.Reason is null ? p.State : ReasonText(p.Reason, p.Detail))})")) + (problems.Count > 3 ? "…" : "."),
-                    "Open Plugins", () => Page = AppPage.Plugins, DismissNotice));
+                    Loc.T(problems.Count == 1 ? "plug.notice_failed_one" : "plug.notice_failed_many", ("count", problems.Count),
+                        ("list", string.Join("; ", problems.Take(3).Select(p => $"{_installed.GetValueOrDefault(p.Mod)?.Name ?? p.Mod} ({(p.Reason is null ? p.State : ReasonText(p.Reason, p.Detail))})"))),
+                        ("end", problems.Count > 3 ? "…" : ".")),
+                    Loc.T("plug.open_plugins"), () => Page = AppPage.Plugins, DismissNotice));
         }
 
         if (_lastStatus is { StartedUtc: { } at, Honest: { State: "failed" } honest } && !_settings.DismissedNotices.Contains($"honest|{at.Ticks}"))
             wanted.Add(new NoticeViewModel($"honest|{at.Ticks}",
-                $"Orion couldn't add your plugins to the game's checksum last time. {honest.Detail} The game may have counted as unmodified, so achievements and multiplayer checks wouldn't have noticed the plugins.",
-                "Open Plugins", () => Page = AppPage.Plugins, DismissNotice));
+                Loc.T("plug.notice_honest_failed", ("detail", honest.Detail)),
+                Loc.T("plug.open_plugins"), () => Page = AppPage.Plugins, DismissNotice));
 
         if (LeftoverNotice() is { } leftover) wanted.Add(leftover);
 
@@ -320,14 +325,14 @@ public sealed partial class MainViewModel
     private async Task CreateMod()
     {
         if (_game is null) return;
-        var answer = _dialogs.PromptWithOption("Create a mod", "My new mod", "Include a plugin (adds a modloader.json to fill in)");
+        var answer = _dialogs.PromptWithOption(Loc.T("plug.create_mod_title"), Loc.T("plug.create_mod_default_name"), Loc.T("plug.create_mod_option"));
         if (answer is not { } a) return;
         try
         {
             var made = ModInstaller.Create(_game.UserDir, a.Name, GameVersion, a.Option);
             AppLog.Info($"Created the mod \"{made.Name}\" in {made.Folder}");
             await AfterModsChangedAsync(made.Key);
-            Notify($"Created \"{made.Name}\". Add it to the playset when you want to try it.");
+            Notify(Loc.T("plug.mod_created", ("name", made.Name)));
         }
         catch (Exception ex) when (ex is ArtemisException or IOException or UnauthorizedAccessException) { ShowError(ex.Message, ex); }
     }
@@ -335,22 +340,22 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private async Task InstallFromArchive()
     {
-        if (_game is null || _dialogs.PickOpenFile("Install a mod from a .zip archive", "Mod archives (*.zip)|*.zip") is not { } file) return;
+        if (_game is null || _dialogs.PickOpenFile(Loc.T("plug.install_archive_title"), Loc.T("plug.install_archive_filter")) is not { } file) return;
         try
         {
             var seen = ModInstaller.Inspect(file, _game.UserDir);
-            var text = $"Install \"{seen.Name}\"? It has {seen.Files:N0} files.";
+            var text = Loc.T("plug.install_prompt", ("name", seen.Name), ("files", seen.Files.ToString("N0")));
             if (seen.Plugin is { IsValid: true } plugin)
-                text += $"\n\nThis mod contains a plugin ({string.Join(", ", plugin.Manifest!.Files)}): code that runs inside the game. Installing it doesn't run anything; you are asked before it can load.";
+                text += Loc.T("plug.install_has_plugin", ("files", string.Join(", ", plugin.Manifest!.Files)));
             else if (seen.Dlls.Count > 0)
-                text += $"\n\nIt also contains .dll files ({string.Join(", ", seen.Dlls.Take(3))}) but no usable modloader.json, so Artemis can't load them.";
-            if (seen.AlreadyInstalled) text += "\n\nA mod with this name is already installed. Installing replaces it.";
-            if (!_dialogs.Confirm(text, seen.AlreadyInstalled ? "Replace" : "Install")) return;
+                text += Loc.T("plug.install_has_dlls", ("dlls", string.Join(", ", seen.Dlls.Take(3))));
+            if (seen.AlreadyInstalled) text += Loc.T("plug.install_replaces");
+            if (!_dialogs.Confirm(text, Loc.T(seen.AlreadyInstalled ? "plug.replace" : "plug.install"))) return;
 
             var done = await Task.Run(() => ModInstaller.Install(file, _game.UserDir, replace: seen.AlreadyInstalled));
             AppLog.Info($"Installed \"{done.Name}\" from {Path.GetFileName(file)} ({done.Files:N0} files)");
             await AfterModsChangedAsync(done.Key);
-            Notify($"Installed \"{done.Name}\".");
+            Notify(Loc.T("plug.mod_installed", ("name", done.Name)));
         }
         catch (Exception ex) when (ex is ArtemisException or IOException or UnauthorizedAccessException or InvalidDataException) { ShowError(ex.Message, ex); }
     }

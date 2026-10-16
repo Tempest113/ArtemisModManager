@@ -3,6 +3,7 @@ using Artemis.Core.Launch;
 using Artemis.Core.Logging;
 using Artemis.Core.Mods;
 using Artemis.Core.IO;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Artemis.App.ViewModels;
@@ -17,7 +18,7 @@ public sealed partial class MainViewModel
     private static string LeftoverId(IEnumerable<ModInfo> leftovers) => "missing|" + DlcLoad.Stamp(leftovers.Select(m => m.Key).Order(StringComparer.OrdinalIgnoreCase))[..16];
 
     private static string NameList(IReadOnlyList<ModInfo> mods, int max) =>
-        string.Join(", ", mods.Take(max).Select(m => m.Name)) + (mods.Count > max ? $" and {mods.Count - max} more" : "");
+        string.Join(", ", mods.Take(max).Select(m => m.Name)) + (mods.Count > max ? Loc.T("plug.name_list_more", ("count", mods.Count - max)) : "");
 
     /// <summary>The notice for leftover .mod files, or null when there are none or the user has already put this set aside.</summary>
     private NoticeViewModel? LeftoverNotice()
@@ -25,8 +26,8 @@ public sealed partial class MainViewModel
         var leftovers = LeftoverMods();
         if (leftovers.Count == 0 || _settings.DismissedNotices.Contains(LeftoverId(leftovers))) return null;
         return new NoticeViewModel(LeftoverId(leftovers),
-            $"{(leftovers.Count == 1 ? "1 mod has" : $"{leftovers.Count} mods have")} a .mod file but no files any more (deleted or unsubscribed): {NameList(leftovers, 3)}.",
-            "Review…", () => _ = ReviewLeftoverMods(), DismissNotice);
+            Loc.T(leftovers.Count == 1 ? "plug.leftover_notice_one" : "plug.leftover_notice_many", ("count", leftovers.Count), ("names", NameList(leftovers, 3))),
+            Loc.T("plug.review"), () => _ = ReviewLeftoverMods(), DismissNotice);
     }
 
     [RelayCommand]
@@ -34,12 +35,12 @@ public sealed partial class MainViewModel
     {
         if (_game is null) return;
         var leftovers = LeftoverMods();
-        if (leftovers.Count == 0) { Notify("No mod in the mod folder is missing its files."); return; }
-        var list = string.Join("\n", leftovers.Take(20).Select(m => $"   {m.Name}   ({m.LoadEntry})")) + (leftovers.Count > 20 ? $"\n   … and {leftovers.Count - 20} more" : "");
+        if (leftovers.Count == 0) { Notify(Loc.T("plug.leftover_none")); return; }
+        var list = string.Join("\n", leftovers.Take(20).Select(m => $"   {m.Name}   ({m.LoadEntry})")) + (leftovers.Count > 20 ? Loc.T("plug.list_more", ("count", leftovers.Count - 20)) : "");
         var workshop = leftovers.Any(m => m.Source == ModSource.Workshop)
-            ? "\n\nSome of these came from the Steam Workshop. If you unsubscribed on purpose, go ahead; if Steam is still downloading them or a drive is unplugged, wait."
+            ? Loc.T("plug.leftover_workshop")
             : "";
-        if (!_dialogs.Confirm($"These mods have a .mod file in your mod folder, but their files are gone:\n\n{list}{workshop}\n\nSend the leftover .mod files to the Recycle Bin? Playsets keep their entries.", "Recycle")) return;
+        if (!_dialogs.Confirm(Loc.T("plug.leftover_confirm", ("list", list), ("workshop", workshop)), Loc.T("plug.recycle"))) return;
         try
         {
             var moved = await Task.Run(() => ModFolderHealth.RemoveDescriptors(_game.UserDir, leftovers, RecycleBin.Send));
@@ -48,7 +49,7 @@ public sealed partial class MainViewModel
             ShowPlayset();
             await RefreshPluginsAsync();
             _ = UpdateIndexAsync();
-            Notify(moved == 1 ? "Sent 1 leftover .mod file to the Recycle Bin." : $"Sent {moved} leftover .mod files to the Recycle Bin.");
+            Notify(moved == 1 ? Loc.T("plug.leftover_sent_one") : Loc.T("plug.leftover_sent_many", ("count", moved)));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowError(ex.Message, ex); }
     }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Artemis.Core.Mods;
 using Artemis.Core.Plugins;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -54,7 +55,9 @@ public sealed partial class SettingViewModel : ObservableObject
 
     /// <summary>What a number may be, as a hint under the box; empty when anything goes.</summary>
     public string Hint => _setting.Type is SettingType.Int or SettingType.Float && (_setting.Min is not null || _setting.Max is not null)
-        ? $"{(_setting.Type == SettingType.Int ? "A whole number" : "A number")} {(_setting.Min is { } lo ? $"from {Format(lo)}" : "up")}{(_setting.Max is { } hi ? $" to {Format(hi)}" : "")}"
+        ? Loc.T(_setting.Max is not null ? (_setting.Min is not null ? "plug.hint_range" : "plug.hint_max") : "plug.hint_min",
+            ("what", Loc.T(_setting.Type == SettingType.Int ? "plug.hint_whole" : "plug.hint_number")),
+            ("lo", _setting.Min is { } lo ? Format(lo) : ""), ("hi", _setting.Max is { } hi ? Format(hi) : ""))
         : "";
 
     public bool HasHint => Hint.Length > 0;
@@ -114,13 +117,13 @@ public sealed partial class SettingViewModel : ObservableObject
         switch (_setting.Type)
         {
             case SettingType.Int:
-                if (!long.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)) { problem = $"Enter a whole number. {Hint}".Trim(); return false; }
-                if (l < _setting.Min || l > _setting.Max) { problem = $"Out of range. {Hint}".Trim(); return false; }
+                if (!long.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)) { problem = Loc.T("plug.enter_whole", ("hint", Hint)).Trim(); return false; }
+                if (l < _setting.Min || l > _setting.Max) { problem = Loc.T("plug.out_of_range", ("hint", Hint)).Trim(); return false; }
                 value = l;
                 return true;
             case SettingType.Float:
-                if (!double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) || !double.IsFinite(d)) { problem = $"Enter a number, with a dot for decimals. {Hint}".Trim(); return false; }
-                if (d < _setting.Min || d > _setting.Max) { problem = $"Out of range. {Hint}".Trim(); return false; }
+                if (!double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) || !double.IsFinite(d)) { problem = Loc.T("plug.enter_number", ("hint", Hint)).Trim(); return false; }
+                if (d < _setting.Min || d > _setting.Max) { problem = Loc.T("plug.out_of_range", ("hint", Hint)).Trim(); return false; }
                 value = d;
                 return true;
             default:
@@ -153,31 +156,31 @@ public sealed partial class PluginRowViewModel : ObservableObject
     public string Name => Manifest?.Name ?? Mod.Name;
     public ObservableCollection<SettingViewModel> Settings { get; }
 
-    public string Subtitle => Manifest is { } m ? $"{m.Id} · version {m.Version} · {(m.Tier == PluginTier.Stable ? "stable" : "fragile")}" : Mod.Name;
+    public string Subtitle => Manifest is { } m ? Loc.T("plug.row_subtitle", ("id", m.Id), ("version", m.Version), ("tier", Loc.T(m.Tier == PluginTier.Stable ? "plug.tier_stable" : "plug.tier_fragile"))) : Mod.Name;
 
     public string TierText => Manifest is not { } m ? "" : m.Tier == PluginTier.Stable
-        ? "Stable: adds script keywords or text commands, which survive game patches best."
-        : "Fragile: hooks specific parts of the game, so it is checked again after every game patch.";
+        ? Loc.T("plug.tier_text_stable")
+        : Loc.T("plug.tier_text_fragile");
 
     public PluginState State => Owner.PluginStateOf(Mod.Key);
 
     public string StateText => State switch
     {
-        PluginState.Approved => "Approved",
-        PluginState.NotApproved => "Needs approval",
-        PluginState.Changed => "Changed since approved",
-        PluginState.WrongBuild => "Not for this game version",
-        PluginState.MissingFiles => "File missing",
-        _ => "Can't be used",
+        PluginState.Approved => Loc.T("plug.state_approved"),
+        PluginState.NotApproved => Loc.T("plug.state_not_approved"),
+        PluginState.Changed => Loc.T("plug.state_changed"),
+        PluginState.WrongBuild => Loc.T("plug.state_wrong_build"),
+        PluginState.MissingFiles => Loc.T("plug.state_missing_files"),
+        _ => Loc.T("plug.state_unusable"),
     };
 
     public string StateDetail => State switch
     {
-        PluginState.Approved => "Its files are exactly the ones you approved.",
-        PluginState.NotApproved => "Until you approve it, the game starts without this plugin. Approving lets it run code inside the game.",
-        PluginState.Changed => "A file changed after you approved it, so the plugin is skipped until you approve it again.",
-        PluginState.WrongBuild => $"It says it supports {string.Join(", ", Manifest?.Builds ?? [])}; the game is {Owner.GameVersion}. It is skipped.",
-        PluginState.MissingFiles => "A file its modloader.json lists is not in the mod's folder.",
+        PluginState.Approved => Loc.T("plug.detail_approved"),
+        PluginState.NotApproved => Loc.T("plug.detail_not_approved"),
+        PluginState.Changed => Loc.T("plug.detail_changed"),
+        PluginState.WrongBuild => Loc.T("plug.detail_wrong_build", ("builds", string.Join(", ", Manifest?.Builds ?? [])), ("version", Owner.GameVersion)),
+        PluginState.MissingFiles => Loc.T("plug.detail_missing_files"),
         _ => Mod.Plugin?.Error ?? "",
     };
 
@@ -201,14 +204,14 @@ public sealed partial class PluginRowViewModel : ObservableObject
         set => Owner.SetPluginOnHere(Mod.Key, value);
     }
 
-    public string Files => Manifest is null ? "" : string.Join("\n", Manifest.Files.Select(f => Owner.PluginHash(Mod.Key, f) is { } h ? $"{f}   SHA-256 {h[..16]}…" : $"{f}   (missing)"));
+    public string Files => Manifest is null ? "" : string.Join("\n", Manifest.Files.Select(f => Owner.PluginHash(Mod.Key, f) is { } h ? $"{f}   SHA-256 {h[..16]}…" : $"{f}   {Loc.T("plug.file_missing")}"));
 
     public string LastRun => Owner.PluginLastRun(Mod.Key);
     public bool HasLastRun => LastRun.Length > 0;
     public bool HasSettings => Settings.Count > 0;
 
-    public string SettingsNote => Manifest is null || Manifest.Settings.Count + Manifest.Features.Count == 0 ? "This plugin has no settings."
-        : !InPlayset ? "Add the mod to the playset to change its settings; they are kept per playset."
+    public string SettingsNote => Manifest is null || Manifest.Settings.Count + Manifest.Features.Count == 0 ? Loc.T("plug.settings_none")
+        : !InPlayset ? Loc.T("plug.settings_add_to_playset")
         : "";
 
     public bool HasSettingsNote => SettingsNote.Length > 0;

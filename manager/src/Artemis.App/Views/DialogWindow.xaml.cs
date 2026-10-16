@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using Artemis.Core.Text;
 
 namespace Artemis.App.Views;
 
@@ -35,7 +36,7 @@ public partial class DialogWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed && e.OriginalSource is not System.Windows.Controls.TextBox) DragMove();
     }
 
-    public static void Message(string text) => new DialogWindow("Artemis", text, "OK", cancel: false, input: null).ShowDialog();
+    public static void Message(string text) => new DialogWindow("Artemis", text, Loc.T("win.ok"), cancel: false, input: null).ShowDialog();
 
     public static bool Ask(string text, string yes = "Yes") =>
         new DialogWindow("Artemis", text, yes, cancel: true, input: null).ShowDialog() == true;
@@ -43,7 +44,7 @@ public partial class DialogWindow : Window
     /// <summary>A name to type and one box to tick. Null when cancelled or the name is empty.</summary>
     public static (string Name, bool Option)? PromptWithOption(string title, string initial, string optionText)
     {
-        var window = new DialogWindow(title, "", "OK", cancel: true, input: initial);
+        var window = new DialogWindow(title, "", Loc.T("win.ok"), cancel: true, input: initial);
         window.OptionBox.Content = optionText;
         window.OptionBox.Visibility = Visibility.Visible;
         return window.ShowDialog() == true && !string.IsNullOrWhiteSpace(window.Value) ? (window.Value.Trim(), window.Option) : null;
@@ -51,7 +52,7 @@ public partial class DialogWindow : Window
 
     public static string? Prompt(string title, string initial)
     {
-        var window = new DialogWindow(title, "", "OK", cancel: true, input: initial);
+        var window = new DialogWindow(title, "", Loc.T("win.ok"), cancel: true, input: initial);
         return window.ShowDialog() == true && !string.IsNullOrWhiteSpace(window.Value) ? window.Value.Trim() : null;
     }
 }

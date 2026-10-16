@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Artemis.Core.Conflicts;
 using Artemis.Core.Index;
 using Artemis.Core.Logging;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Artemis.App.ViewModels;
@@ -78,11 +79,11 @@ public sealed partial class MainViewModel
     {
         ConflictsView.Refresh();
         var shown = ConflictsView.Cast<object>().Count();
-        ConflictsShownText = Conflicts.Count == 0 ? "" : shown == 1 ? "1 conflict" : $"{shown:N0} conflicts";
+        ConflictsShownText = Conflicts.Count == 0 ? "" : shown == 1 ? Loc.T("vm.conflicts_one") : Loc.T("vm.conflicts_many", ("count", shown.ToString("N0")));
         ConflictsEmptyText = shown > 0 || !_conflictsKnown ? ""
-            : Conflicts.Count > 0 ? "No conflicts match this filter."
-            : LoadOrder.Any(r => !r.IsSeparator && r.Enabled) ? "No conflicts between the enabled mods."
-            : "Switch on mods in the load order to see where they overlap.";
+            : Conflicts.Count > 0 ? Loc.T("vm.conflicts_none_filter")
+            : LoadOrder.Any(r => !r.IsSeparator && r.Enabled) ? Loc.T("vm.conflicts_none")
+            : Loc.T("vm.conflicts_switch_on");
         if (SelectedConflict is not null && !ConflictsView.Cast<object>().Contains(SelectedConflict)) SelectedConflict = null;
     }
 
@@ -118,7 +119,7 @@ public sealed partial class MainViewModel
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException)
         {
             AppLog.Error("Conflicts couldn't be worked out", ex);
-            ConflictsEmptyText = "Couldn't read the mod index.";
+            ConflictsEmptyText = Loc.T("vm.conflicts_index_error");
         }
         finally
         {
@@ -134,8 +135,8 @@ public sealed partial class MainViewModel
         ConflictsNote = report.NotIndexed.Count switch
         {
             0 => "",
-            1 => "1 enabled mod isn't indexed yet, so it isn't checked.",
-            var n => $"{n} enabled mods aren't indexed yet, so they aren't checked.",
+            1 => Loc.T("vm.conflicts_not_indexed_one"),
+            var n => Loc.T("vm.conflicts_not_indexed_many", ("count", n)),
         };
 
         var perMod = new Dictionary<string, (int Total, int Wins)>(StringComparer.OrdinalIgnoreCase);

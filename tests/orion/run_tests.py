@@ -39,8 +39,8 @@ def vcvars() -> str:
     return str(Path(out) / "VC/Auxiliary/Build/vcvars64.bat")
 
 
-def compile_with_msvc(args: str, cwd: Path) -> None:
-    r = subprocess.run(f'"{vcvars()}" >nul && cl /nologo {args}', shell=True, capture_output=True, text=True, cwd=cwd)
+def compile_with_msvc(args: str, cwd: Path, tool: str = "cl") -> None:
+    r = subprocess.run(f'"{vcvars()}" >nul && {tool} /nologo {args}', shell=True, capture_output=True, text=True, cwd=cwd)
     if r.returncode != 0:
         raise SystemExit("compile failed:\n" + r.stdout + r.stderr)
 
@@ -186,6 +186,14 @@ class Tools:
         compile_with_msvc(f'/O1 /Ob0 /Fo"{w}/" "{(Path(__file__).with_name("fake_busy_game.c")).as_posix()}" /Fe:"{w}/fake_busy_game.exe"', work)
         self.fake_busy_game = work / "fake_busy_game.exe"
         self.profiler_bytes = (work / "profiler.dll").read_bytes()
+        # the render throttle and a stand-in game whose frame-pump helper starts like the real one
+        compile_with_msvc(f'/O1 /LD /MT /EHsc /W4 /I"{(ROOT / "sdk" / "include").as_posix()}" /Fo"{w}/" "{(ROOT / "sdk" / "test_plugins" / "render_throttle.cpp").as_posix()}" '
+                          f'/Fe:"{w}/render_throttle.dll"', work)
+        compile_with_msvc(f'/c /Fo"{w}/fake_render_frame.obj" "{(Path(__file__).with_name("fake_render_frame.asm")).as_posix()}"', work, tool="ml64")
+        compile_with_msvc(f'/O1 /Ob0 /Fo"{w}/" "{(Path(__file__).with_name("fake_render_game.c")).as_posix()}" "{w}/fake_render_frame.obj" /Fe:"{w}/fake_render_game.exe" '
+                          f'/link /INCREMENTAL:NO', work)
+        self.fake_render_game = work / "fake_render_game.exe"
+        self.throttle_bytes = (work / "render_throttle.dll").read_bytes()
         self.fake_physfs_game = work / "fake_physfs_game.exe"
         self.spike_bytes = (work / "honest_spike.dll").read_bytes()
         self.fake_game = work / "fake_game.exe"
@@ -654,8 +662,102 @@ def sampling_profiler(c: Case, root: Path, tools: Tools) -> None:
     c.check("HotLeaf(unsigned)" in shown and "hot chain" in shown, f"named report:\n{shown}")
     calls = profile_report.tree(rep, profile_report.Namer(rep, names), busy, None, 6, 1.0, False)
     c.check("HotParent(unsigned)" in calls and "HotLeaf(unsigned)" in calls.split("HotParent(unsigned)", 1)[1], f"the call tree should show HotLeaf under HotParent:\n{calls}")
+    cut = profile_report.prune(rep, profile_report.Namer(rep, names), __import__("re").compile("HotLeaf"))
+    c.check(all(v[1] != leaf for v in cut.nodes.values()) and cut.threads[busy]["samples"] < rep.threads[busy]["samples"] - 50 and
+            any(0 <= v[1] - flat < 0x20 for v in cut.nodes.values()),
+            f"cutting HotLeaf should remove its samples and keep FlatLeaf's: {cut.threads[busy]} vs {rep.threads[busy]}")
     plain = profile_report.render(rep, profile_report.Namer(rep, None), 1, 5, [])
     c.check(f"sub_{leaf - base:x}" in plain, "without names the hot function should show as sub_<rva>")
+
+
+def render_throttle(c: Case, root: Path, tools: Tools) -> None:
+    """The render throttle overwrites the first instruction of a stand-in frame-pump helper and thins out its calls; it forwards the arguments, keeps the
+    registers the helper uses, installs nothing at interval 0, and refuses (skipped, not failed) when the bytes differ or the build data lacks the entry."""
+    got = dict(kv.split("=") for kv in subprocess.run([str(tools.fake_render_game), "probe"], capture_output=True, text=True).stdout.split())
+    rva, first = int(got["rva"], 16), bytes.fromhex(got["bytes"])
+    c.check(first == bytes.fromhex("4889 5c24 08".replace(" ", "")), f"the stand-in helper should start with mov [rsp+8],rbx: {first.hex()}")
+    build = build_id_of(tools.fake_render_game)
+
+    def world(name: str, interval: int, prologue: bytes | None = None, data: bool = True) -> World:
+        w = World(root, name, tools, [Mod("Orion Render Throttle", "artemis.render-throttle", dll=tools.throttle_bytes,
+                                          values={"minIntervalMs": interval, "hotkey": 0})], game_exe=tools.fake_render_game)
+        if data:
+            (w.data / "orion" / "builds" / f"{build}.json").write_text(json.dumps(
+                {"build": build, "game": GAME_VERSION, "addresses": {"render_frame": rva},
+                 "values": {"render_frame_prologue": int.from_bytes(prologue or first, "little"), "render_frame_prologue_len": 5}}))
+        return w
+
+    def numbers(r: subprocess.CompletedProcess) -> dict:
+        return {k: int(v) for k, v in (kv.split("=") for kv in r.stdout.split() if "=" in kv)}
+
+    w = world("throttle-on", 200)
+    r = w.run()
+    c.game_ok(r)
+    n = numbers(r)
+    c.check((w.entry("Orion Render Throttle") or {}).get("state") == "loaded", f"the throttle should load: {w.entry('Orion Render Throttle')}")
+    c.check(n.get("calls", 0) > 10000 and 3 <= n.get("ran", 0) <= 12, f"1.5 s at 200 ms should let about 8 of the calls run: {n}")
+    c.check(n.get("sum") == 10, f"the four arguments must reach the original function: {n}")
+    log = (w.modloader / "plugins" / "Orion Render Throttle.log").read_text(encoding="utf-8")
+    c.check("installed: the frame pump runs at most every 200 ms" in log, f"the plugin's log: {log!r}")
+
+    w = world("throttle-off", 0)
+    r = w.run()
+    c.game_ok(r)
+    n = numbers(r)
+    c.check(n.get("calls", 0) > 10000 and n.get("ran") == n.get("calls"), f"interval 0 must leave every call alone: {n}")
+
+    # a click or key waiting in the queue means the pump always runs (the test switch stands in for hardware input, which can't be injected here)
+    w = world("throttle-input", 200)
+    r = w.run(env={"ORION_THROTTLE_INPUT_WAITING": "1"})
+    c.game_ok(r)
+    n = numbers(r)
+    c.check(n.get("calls", 0) > 10000 and 500 <= n.get("ran", 0) < n.get("calls", 0) and n.get("sum") == 10,
+            f"with input waiting the pump should run about once a millisecond, far more than the 8 or so of a quiet queue: {n}")
+
+    w = world("throttle-bytes", 200, prologue=bytes.fromhex("9090909090"))
+    r = w.run()
+    c.game_ok(r)
+    n = numbers(r)
+    skipped(c, w, "Orion Render Throttle", "buildUnsupported")
+    c.check(n.get("ran") == n.get("calls"), f"different bytes must mean no patch: {n}")
+    c.check("first bytes differ" in (w.modloader / "plugins" / "Orion Render Throttle.log").read_text(encoding="utf-8"), "the log should say why")
+
+    w = world("throttle-nodata", 200, data=False)
+    r = w.run()
+    c.game_ok(r)
+    skipped(c, w, "Orion Render Throttle", "buildUnsupported")
+    c.check(numbers(r).get("ran") == numbers(r).get("calls"), "no build data must mean no patch")
+
+
+def add_address_tool(c: Case, root: Path, tools: Tools) -> None:
+    """orion/tools/add_address.py merges an address and the function's first bytes into the build data and keeps everything else, the user's permission included."""
+    got = dict(kv.split("=") for kv in subprocess.run([str(tools.fake_render_game), "probe"], capture_output=True, text=True).stdout.split())
+    rva, first = int(got["rva"], 16), bytes.fromhex(got["bytes"])
+    build = build_id_of(tools.fake_render_game)
+    data = root / "addaddr"
+    folder = data / "orion" / "builds"
+    folder.mkdir(parents=True)
+    original = json.dumps({"build": build, "game": "v0", "source": "user", "addresses": {"keep": 1}, "values": {"other": 2}}, separators=(",", ":"))
+    (folder / f"{build}.json").write_text(original)
+    names = root / "addaddr-names.json"
+    names.write_text(json.dumps({"names": [[rva, "Fake::RenderFrame", "t", 1.0], [rva + 4, "Dup::Name", "t", 1.0], [rva + 8, "Dup::Name", "t", 1.0]]}))
+    tool = [sys.executable, str(ROOT / "orion" / "tools" / "add_address.py"), "--exe", str(tools.fake_render_game), "--bytes", "5", "--data-dir", str(data)]
+
+    r = subprocess.run(tool + ["--as", "render_frame", "--function", "Fake::RenderFrame", "--names", str(names)], capture_output=True, text=True)
+    c.check(r.returncode == 0, r.stdout + r.stderr)
+    merged = json.loads((folder / f"{build}.json").read_text())
+    c.check(merged["source"] == "user" and merged["addresses"] == {"keep": 1, "render_frame": rva}, f"merged addresses: {merged}")
+    c.check(merged["values"] == {"other": 2, "render_frame_prologue": int.from_bytes(first, "little"), "render_frame_prologue_len": 5}, f"merged values: {merged['values']}")
+    c.check((folder / f"{build}.json.bak").read_text() == original, "the first change should keep a copy of the original")
+
+    r = subprocess.run(tool + ["--as", "other", "--rva", hex(rva)], capture_output=True, text=True)
+    c.check(r.returncode == 0 and (folder / f"{build}.json.bak").read_text() == original, "a second change must not replace the first backup: " + r.stdout + r.stderr)
+    r = subprocess.run(tool + ["--as", "x", "--function", "Dup::Name", "--names", str(names)], capture_output=True, text=True)
+    c.check(r.returncode != 0 and "named 2 times" in (r.stdout + r.stderr), "an ambiguous name should be refused")
+    (folder / f"{build}.json").write_text(original.replace(build, "00000000-1000", 1))
+    before = (folder / f"{build}.json").read_text()
+    r = subprocess.run(tool + ["--as", "x", "--rva", hex(rva)], capture_output=True, text=True)
+    c.check(r.returncode != 0 and (folder / f"{build}.json").read_text() == before, "a file that is for another build must be left alone")
 
 
 def _descends_from(rep, node: int, root: int) -> bool:
@@ -674,7 +776,7 @@ def export_parity(c: Case, root: Path, tools: Tools) -> None:
     c.check(version.startswith("Artemis"), f"the stub's company name must start with Artemis (that is how the manager recognises it): {version!r}")
 
 
-SCENARIOS = [export_parity, sampling_profiler, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
+SCENARIOS = [export_parity, sampling_profiler, render_throttle, add_address_tool, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
              order_and_dependencies, versions_and_api, manifests_and_paths, cache_is_checked]
 
 

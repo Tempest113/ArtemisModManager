@@ -3,6 +3,7 @@ using Artemis.App.ViewModels;
 using Artemis.App.Views;
 using Artemis.Core.Logging;
 using Artemis.Core.Playsets;
+using Artemis.Core.Text;
 
 namespace Artemis.App;
 
@@ -23,6 +24,9 @@ public partial class App : Application
         var paths = i >= 0 && i + 1 < e.Args.Length ? new AppPaths(e.Args[i + 1]) : AppPaths.Default();
         AppLog.Start(paths.LogFile);
         AppDomain.CurrentDomain.UnhandledException += (_, args) => AppLog.Error("Unhandled error", args.ExceptionObject as Exception);
+
+        Loc.Load(System.IO.Path.Combine(AppContext.BaseDirectory, "loc", "en.loc"));
+        foreach (var p in Loc.Problems) AppLog.Error("Text file: " + p);
 
         // --user-dir does the same for the game's Documents folder (mods, dlc_load.json), so tests never touch the real one.
         var u = Array.IndexOf(e.Args, "--user-dir");

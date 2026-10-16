@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -98,7 +99,7 @@ public sealed class Playset
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
     public static Playset FromJson(string json) =>
-        JsonSerializer.Deserialize<Playset>(json, JsonOptions) ?? throw new InvalidDataException("The playset file is empty.");
+        JsonSerializer.Deserialize<Playset>(json, JsonOptions) ?? throw new InvalidDataException(Loc.T("core2.playset_file_empty"));
 
     /// <summary>A playset from a file someone shared: always a new playset (fresh id), with lines that couldn't mean anything dropped.</summary>
     public static Playset Import(string json)

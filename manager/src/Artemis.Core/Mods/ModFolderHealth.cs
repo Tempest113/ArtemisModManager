@@ -73,6 +73,36 @@ public static class ModFolderHealth
     }
 
     /// <summary>
+    /// Steam puts a subscribed Workshop item in <c>steamapps/workshop/content/281990/&lt;id&gt;</c>, but the game only sees it through <c>mod/ugc_&lt;id&gt;.mod</c>,
+    /// which the Paradox Launcher writes. For each item with no mod file, writes one the way the Launcher does. Never replaces a file that is there.
+    /// </summary>
+    public static IReadOnlyList<NewDescriptor> RegisterWorkshop(string userDir, string workshopDir, IEnumerable<ModInfo> known)
+    {
+        var made = new List<NewDescriptor>();
+        if (!Directory.Exists(workshopDir)) return made;
+        var taken = known.Where(m => m.ContentDir is not null).Select(m => Norm(m.ContentDir!)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in Directory.EnumerateDirectories(workshopDir))
+        {
+            var id = Path.GetFileName(folder);
+            var outer = Path.Combine(userDir, "mod", $"ugc_{id}.mod");
+            if (id.Length == 0 || !id.All(char.IsAsciiDigit) || File.Exists(outer) || taken.Contains(Norm(folder))) continue;
+            try
+            {
+                var text = File.ReadAllText(Path.Combine(folder, "descriptor.mod"));
+                string? name = null;
+                try { name = PdxScript.Parse(text).GetString("name"); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }
+                var body = ModInstaller.WithPath(text, Norm(folder).Replace('\\', '/'));
+                if (!body.Contains("remote_file_id", StringComparison.OrdinalIgnoreCase)) body += $"remote_file_id=\"{id}\"\n";
+                File.WriteAllText(outer, body, new UTF8Encoding(false));
+                made.Add(new NewDescriptor($"ugc_{id}", string.IsNullOrWhiteSpace(name) ? $"ugc_{id}" : name, folder));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        return made;
+    }
+
+    /// <summary>
     /// Sends the .mod files of mods whose folder or archive is gone to <paramref name="remove"/> (the Recycle Bin, <see cref="IO.RecycleBin.Send"/>), so nothing is lost for
     /// good. Each file is looked at again first, and one whose files have come back, or that is not directly in <c>mod/</c>, is left alone. Returns how many went.
     /// </summary>

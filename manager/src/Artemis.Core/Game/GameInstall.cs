@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -46,7 +47,7 @@ public sealed class GameInstall
         var settingsPath = Path.Combine(gameDir, "launcher-settings.json");
         if (!File.Exists(settingsPath)) settingsPath = Path.Combine(gameDir, "launcher", "launcher-settings.json");
         if (!File.Exists(settingsPath))
-            throw new FileNotFoundException("launcher-settings.json was not found in the game folder.", settingsPath);
+            throw new FileNotFoundException(Loc.T("core2.game_settings_missing"), settingsPath);
 
         var settings = LauncherSettings.Read(settingsPath);
         return new GameInstall

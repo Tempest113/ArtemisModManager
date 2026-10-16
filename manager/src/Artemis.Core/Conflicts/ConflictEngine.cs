@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Artemis.Core.Index;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Conflicts;
 
@@ -73,8 +74,8 @@ public static class ConflictEngine
             var winner = list.Count - 1;
             conflicts.Add(new Conflict(ConflictKind.File, GameFiles.Domain(path), path, MergeRule.LastWins, list.Select(h => Entry(sources, h)).ToList(), winner,
                 list.Any(h => sources[h.Source].IsGame)
-                    ? "A mod's file replaces the game's file with the same path."
-                    : "Files with the same path replace each other; the one loaded last is used.",
+                    ? Loc.T("core.conflict_file_over_game")
+                    : Loc.T("core.conflict_file_same_path"),
                 IsIntended(sources, list.Select(h => h.Source).ToList(), list[winner].Source)));
         }
 
@@ -157,21 +158,21 @@ public static class ConflictEngine
 
     private static string Why(string domain, MergeRule rule, bool text, List<Hit> picks, Hit winner)
     {
-        if (text && IsReplace(winner) && picks.Any(p => !IsReplace(p))) return "Text in a replace folder takes priority.";
+        if (text && IsReplace(winner) && picks.Any(p => !IsReplace(p))) return Loc.T("core.conflict_replace_folder");
         var first = rule == MergeRule.FirstWins;
-        var why = $"{Label(domain, text)} use {(first ? "first" : "last")} in, only served.";
+        var why = Loc.T(first ? "core.conflict_first_wins" : "core.conflict_last_wins", ("label", Label(domain, text)));
         var key = FileName(winner.Path).ToLowerInvariant();
-        if (picks.Any(p => p.Source != winner.Source && FileName(p.Path).ToLowerInvariant() == key)) why += " The file names match, so load order decides.";
-        return rule == MergeRule.Unreliable ? why + " The game doesn't always follow this." : why;
+        if (picks.Any(p => p.Source != winner.Source && FileName(p.Path).ToLowerInvariant() == key)) why += " " + Loc.T("core.conflict_names_match");
+        return rule == MergeRule.Unreliable ? why + " " + Loc.T("core.conflict_unreliable") : why;
     }
 
     /// <summary>"Technology definitions" for common/technology; "Events" for events; "Localisation keys" for text.</summary>
     private static string Label(string domain, bool text)
     {
-        if (text) return "Localisation keys";
-        if (domain == "events") return "Events";
+        if (text) return Loc.T("core.conflict_label_text");
+        if (domain == "events") return Loc.T("core.conflict_label_events");
         var folder = domain[(domain.LastIndexOf('/') + 1)..].Replace('_', ' ');
-        return $"{char.ToUpperInvariant(folder[0])}{folder[1..]} definitions";
+        return Loc.T("core.conflict_label_definitions", ("folder", $"{char.ToUpperInvariant(folder[0])}{folder[1..]}"));
     }
 
     /// <summary>True when the winning mod's descriptor asks to load after every other mod involved, directly or through other mods.</summary>

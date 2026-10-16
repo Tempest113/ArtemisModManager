@@ -4,6 +4,7 @@ using Artemis.Core.Achievements;
 using Artemis.Core.Game;
 using Artemis.Core.Mods;
 using Artemis.Core.Playsets;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Artemis.App.ViewModels;
@@ -21,11 +22,11 @@ public abstract class ModRowBase(MainViewModel owner, ModInfo? mod, string key, 
     public virtual string Name => mod?.Name ?? key;
     public string Initials => Placeholder.Initials(Name);
     public Brush PlaceholderBrush => Placeholder.For(Name);
-    public string SourceName => mod is null ? "Missing" : mod.Source == ModSource.Workshop ? "Workshop" : "Local";
+    public string SourceName => mod is null ? Loc.T("vm.source_missing") : mod.Source == ModSource.Workshop ? Loc.T("vm.source_workshop") : Loc.T("vm.source_local");
 
     public string VersionText => mod?.SupportedVersion ?? "";
     public bool IsOutdated => mod is not null && VersionMatcher.IsCompatible(mod.SupportedVersion, gameVersion) == false;
-    public string VersionTip => IsOutdated ? $"Made for {mod!.SupportedVersion}. The game is {gameVersion}." : VersionText;
+    public string VersionTip => IsOutdated ? Loc.T("vm.version_tip", ("version", mod!.SupportedVersion), ("game", gameVersion)) : VersionText;
 
     public bool HasPlugin => mod?.Plugin is not null;
     public bool HasConflicts => mod is not null && owner.HasConflicts(mod.Key);
@@ -50,7 +51,7 @@ public abstract class ModRowBase(MainViewModel owner, ModInfo? mod, string key, 
     public string? Note => mod is null ? null : owner.NoteFor(mod.Key);
     public bool HasNote => Note is not null;
     public ModChange Change => mod is null ? ModChange.None : owner.ChangeFor(mod);
-    public string ChangeText => Change switch { ModChange.New => "New", ModChange.Updated => "Updated", _ => "" };
+    public string ChangeText => Change switch { ModChange.New => Loc.T("vm.change_new"), ModChange.Updated => Loc.T("vm.change_updated"), _ => "" };
 
     public void RefreshMarks()
     {
@@ -65,7 +66,7 @@ public abstract class ModRowBase(MainViewModel owner, ModInfo? mod, string key, 
     }
 
     public virtual bool HasProblem => mod is null || mod.ContentMissing;
-    public virtual string ProblemText => mod is null ? "This mod isn't installed." : "The mod's files are missing.";
+    public virtual string ProblemText => mod is null ? Loc.T("vm.problem_not_installed") : Loc.T("vm.problem_files_missing");
 
     /// <summary>Loaded on first use, which for a virtualized list means when the row first scrolls into view.</summary>
     public ImageSource? Thumbnail

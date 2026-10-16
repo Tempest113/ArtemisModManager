@@ -3,6 +3,7 @@ using System.Text;
 using Artemis.Core.IO;
 using Artemis.Core.Pdx;
 using Artemis.Core.Plugins;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Mods;
 
@@ -46,10 +47,10 @@ public static class ModInstaller
         var modDir = Path.GetFullPath(Path.Combine(userDir, "mod"));
         var target = Path.GetFullPath(Path.Combine(modDir, folder));
         var outer = Path.Combine(modDir, folder + ".mod");
-        if (!target.StartsWith(modDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException("That mod's name can't be used as a folder name.");
+        if (!target.StartsWith(modDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException(Loc.T("core.mod_name_unusable"));
         if (Exists(userDir, folder))
         {
-            if (!replace) throw new ArtemisException($"A mod called \"{folder}\" is already installed.");
+            if (!replace) throw new ArtemisException(Loc.T("core.mod_exists", ("folder", folder)));
             if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
             if (File.Exists(outer)) File.Delete(outer);
         }
@@ -62,9 +63,9 @@ public static class ModInstaller
             foreach (var entry in entries)
             {
                 total += entry.Length;
-                if (total > MaxBytes) throw new ArtemisException("This archive is far larger than any mod; it was not installed.");
+                if (total > MaxBytes) throw new ArtemisException(Loc.T("core.archive_too_big"));
                 var dest = Path.GetFullPath(Path.Combine(target, entry.Name.Replace('/', Path.DirectorySeparatorChar)));
-                if (!dest.StartsWith(target + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException("This archive tries to write outside the mod's folder; it was not installed.");
+                if (!dest.StartsWith(target + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException(Loc.T("core.archive_escapes"));
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 entry.ExtractToFile(dest, overwrite: true);
             }
@@ -85,8 +86,8 @@ public static class ModInstaller
     {
         name = name.Trim();
         var folder = SafeName(name);
-        if (name.Length == 0 || folder.Length == 0) throw new ArtemisException("A mod needs a name.");
-        if (Exists(userDir, folder)) throw new ArtemisException($"A mod called \"{folder}\" already exists.");
+        if (name.Length == 0 || folder.Length == 0) throw new ArtemisException(Loc.T("core.mod_needs_name"));
+        if (Exists(userDir, folder)) throw new ArtemisException(Loc.T("core.mod_already_exists", ("folder", folder)));
         var modDir = Path.Combine(userDir, "mod");
         var target = Path.Combine(modDir, folder);
         var supported = gameVersion.Split('.') is [var major, ..] && major.TrimStart('v').Length > 0 ? $"v{major.TrimStart('v')}.*" : "v4.*";
@@ -132,7 +133,7 @@ public static class ModInstaller
         try { return ZipFile.OpenRead(path); }
         catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            throw new ArtemisException(ex is InvalidDataException ? "That isn't a .zip archive (7z and rar files aren't supported yet)." : $"The archive couldn't be opened: {ex.Message}");
+            throw new ArtemisException(ex is InvalidDataException ? Loc.T("core.archive_not_zip") : Loc.T("core.archive_open_failed", ("reason", ex.Message)));
         }
     }
 
@@ -141,8 +142,8 @@ public static class ModInstaller
     {
         var best = zip.Entries.Where(e => e.Name.Equals("descriptor.mod", StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e.FullName.Count(c => c == '/')).FirstOrDefault()
-            ?? throw new ArtemisException("This archive has no descriptor.mod, so it doesn't look like a Stellaris mod.");
-        if (best.FullName.Count(c => c == '/') > 1) throw new ArtemisException("This archive's descriptor.mod is buried too deep to be a Stellaris mod.");
+            ?? throw new ArtemisException(Loc.T("core.archive_no_descriptor"));
+        if (best.FullName.Count(c => c == '/') > 1) throw new ArtemisException(Loc.T("core.archive_descriptor_deep"));
         using var reader = new StreamReader(best.Open(), Encoding.UTF8);
         return (best.FullName[..^best.Name.Length], reader.ReadToEnd());
     }
@@ -156,7 +157,7 @@ public static class ModInstaller
             if (e.Name.Length == 0 || !e.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
             var relative = e.FullName[prefix.Length..].Replace('\\', '/');
             if (relative.Split('/').Any(p => p is "" or "." or "..") || Path.IsPathRooted(relative) || relative.Contains(':')) continue;
-            if (++count > MaxFiles) throw new ArtemisException("This archive holds far more files than any mod; it was not installed.");
+            if (++count > MaxFiles) throw new ArtemisException(Loc.T("core.archive_too_many_files"));
             yield return new Entry(e, relative);
         }
     }
@@ -171,9 +172,12 @@ public static class ModInstaller
     private static string? DescriptorName(string descriptor) => PdxScript.Parse(descriptor).GetString("name") is { Length: > 0 } n && SafeName(n).Length > 0 ? n : null;
 
     /// <summary>The .mod file the game reads: the descriptor, and the line that says where the mod's files are.</summary>
-    public static string OuterFile(string descriptor, string folder)
+    public static string OuterFile(string descriptor, string folder) => WithPath(descriptor, $"mod/{folder}");
+
+    /// <summary>The descriptor with its own <c>path</c> and <c>archive</c> lines replaced by a single <c>path</c> line.</summary>
+    public static string WithPath(string descriptor, string path)
     {
         var lines = descriptor.Replace("\r\n", "\n").Split('\n').Where(l => !l.TrimStart().StartsWith("path", StringComparison.OrdinalIgnoreCase) && !l.TrimStart().StartsWith("archive", StringComparison.OrdinalIgnoreCase));
-        return string.Join('\n', lines).TrimEnd() + $"\npath=\"mod/{folder}\"\n";
+        return string.Join('\n', lines).TrimEnd() + $"\npath=\"{path}\"\n";
     }
 }

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Artemis.App.ViewModels"
         xmlns:local="clr-namespace:Artemis.App"
-        Title="Artemis Mod Manager" Icon="Assets/app.ico" Width="1240" Height="780" MinWidth="960" MinHeight="520"
+        Title="{local:T ui.app_title}" Icon="Assets/app.ico" Width="1240" Height="780" MinWidth="960" MinHeight="520"
         WindowStyle="None" Background="{StaticResource Bg0}" Foreground="{StaticResource Text}"
         FontFamily="{StaticResource UiFont}" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
   <WindowChrome.WindowChrome>
@@ -93,7 +93,7 @@
     <DataTemplate x:Key="RowMarks">
       <StackPanel Orientation="Horizontal">
         <Border Background="{StaticResource AccentSoft}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
-                ToolTip="Changed since you last launched from Artemis">
+                ToolTip="{local:T ui.tip_changed_since_launch}">
           <Border.Style>
             <Style TargetType="Border">
               <Style.Triggers><DataTrigger Binding="{Binding ChangeText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
@@ -156,7 +156,7 @@
         </StackPanel>
         <Border Grid.Column="4" Style="{StaticResource VDivider}" />
         <ToggleButton Grid.Column="4" Style="{StaticResource AddToggle}" IsChecked="{Binding InPlayset}" HorizontalAlignment="Center"
-                      ToolTip="Add to or remove from the playset" AutomationProperties.Name="In playset" />
+                      ToolTip="{local:T ui.tip_toggle_playset}" AutomationProperties.Name="{local:T ui.in_playset}" />
       </Grid>
       </Border>
     </DataTemplate>
@@ -174,9 +174,9 @@
             <ColumnDefinition Width="62" />
           </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoGrip}" FontSize="13" Foreground="#6B6B74" Cursor="SizeAll" Background="{StaticResource Clear}"
-                     ToolTip="Drag the row to reorder" />
+                     ToolTip="{local:T ui.tip_drag_reorder}" />
           <TextBox Grid.Column="1" Style="{StaticResource PositionBox}" Text="{Binding IndexText, UpdateSourceTrigger=LostFocus}" KeyDown="PositionBox_KeyDown"
-                   VerticalAlignment="Center" Margin="2,0,6,0" ToolTip="Type a position and press Enter to move this mod" AutomationProperties.Name="Position" />
+                   VerticalAlignment="Center" Margin="2,0,6,0" ToolTip="{local:T ui.tip_position_box}" AutomationProperties.Name="{local:T ui.position}" />
           <Border Grid.Column="2" Style="{StaticResource VDivider}" />
           <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource ThumbView}" HorizontalAlignment="Left" Margin="8,0,0,0" Focusable="False" />
           <DockPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,10,0" LastChildFill="True">
@@ -188,7 +188,7 @@
           <Border Grid.Column="4" Style="{StaticResource VDivider}" />
           <ContentControl Grid.Column="4" Content="{Binding}" ContentTemplate="{StaticResource AchievementMark}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
           <Border Grid.Column="5" Style="{StaticResource VDivider}" />
-          <ToggleButton Grid.Column="5" Style="{StaticResource SwitchToggle}" IsChecked="{Binding Enabled}" HorizontalAlignment="Center" ToolTip="Enabled" AutomationProperties.Name="Enabled" />
+          <ToggleButton Grid.Column="5" Style="{StaticResource SwitchToggle}" IsChecked="{Binding Enabled}" HorizontalAlignment="Center" ToolTip="{local:T ui.enabled}" AutomationProperties.Name="{local:T ui.enabled}" />
         </Grid>
       </Border>
       <Border x:Name="DropAbove" Height="2" VerticalAlignment="Top" Background="{StaticResource Accent}" Visibility="Collapsed" IsHitTestVisible="False" />
@@ -213,14 +213,14 @@
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoGrip}" FontSize="13" Foreground="#6B6B74" Cursor="SizeAll" Background="{StaticResource Clear}"
-                     ToolTip="Drag the row to reorder" />
-          <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="24" Height="24" Click="GroupChevron_Click" ToolTip="Fold the mods of this group away, or show them"
-                  AutomationProperties.Name="Fold or unfold this group">
+                     ToolTip="{local:T ui.tip_drag_reorder}" />
+          <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="24" Height="24" Click="GroupChevron_Click" ToolTip="{local:T ui.tip_fold_group}"
+                  AutomationProperties.Name="{local:T ui.fold_group}">
             <TextBlock x:Name="Chev" Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="10" />
           </Button>
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" Margin="2,0,0,0" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding GroupSize}" Foreground="{StaticResource Faint}" FontSize="12" Margin="8,0,0,0" ToolTip="Mods in this group" />
+            <TextBlock Text="{Binding GroupSize}" Foreground="{StaticResource Faint}" FontSize="12" Margin="8,0,0,0" ToolTip="{local:T ui.tip_group_size}" />
           </StackPanel>
         </Grid>
       </Border>
@@ -266,20 +266,20 @@
       <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
         <Image Source="Assets/logo.png" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality" />
 
-        <TextBlock Text="Artemis Mod Manager" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+        <TextBlock Text="{local:T ui.app_title}" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
         <Border Background="{StaticResource Bg3}" CornerRadius="5" Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center"
                 Visibility="{Binding HasGameVersion, Converter={StaticResource BoolToVis}}">
-          <TextBlock Text="{Binding GameVersion, StringFormat=Stellaris {0}}" FontSize="11.5" Foreground="{StaticResource Muted}" />
+          <TextBlock Text="{Binding GameVersion, StringFormat={local:T ui.game_version_format}}" FontSize="11.5" Foreground="{StaticResource Muted}" />
         </Border>
-        <Button Style="{StaticResource CaptionButton}" Click="Minimize_Click" AutomationProperties.Name="Minimize">
+        <Button Style="{StaticResource CaptionButton}" Click="Minimize_Click" AutomationProperties.Name="{local:T ui.minimize}">
           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoMin}" FontSize="10" />
         </Button>
-        <Button x:Name="MaxButton" Style="{StaticResource CaptionButton}" Click="Maximize_Click" AutomationProperties.Name="Maximize">
+        <Button x:Name="MaxButton" Style="{StaticResource CaptionButton}" Click="Maximize_Click" AutomationProperties.Name="{local:T ui.maximize}">
           <TextBlock x:Name="MaxGlyph" Style="{StaticResource Icon}" Text="{StaticResource IcoMax}" FontSize="10" />
         </Button>
-        <Button Style="{StaticResource CloseCaptionButton}" Click="Close_Click" AutomationProperties.Name="Close">
+        <Button Style="{StaticResource CloseCaptionButton}" Click="Close_Click" AutomationProperties.Name="{local:T ui.close}">
           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoWinClose}" FontSize="10" />
         </Button>
       </StackPanel>
@@ -293,8 +293,8 @@
 
       <!-- Left column: playset, launch, pages -->
       <StackPanel Margin="12">
-        <TextBlock Text="Playset" Style="{StaticResource HeaderText}" Margin="4,0,0,4" />
-        <Button x:Name="PlaysetButton" Style="{StaticResource FieldButton}" Click="PlaysetMenu_Click" AutomationProperties.Name="Playset" ToolTip="Switch or manage playsets">
+        <TextBlock Text="{local:T ui.playset}" Style="{StaticResource HeaderText}" Margin="4,0,0,4" />
+        <Button x:Name="PlaysetButton" Style="{StaticResource FieldButton}" Click="PlaysetMenu_Click" AutomationProperties.Name="{local:T ui.playset}" ToolTip="{local:T ui.tip_playset_menu}">
           <Grid>
             <TextBlock Text="{Binding SelectedPlaysetName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,22,0" />
             <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" Foreground="{StaticResource Faint}" HorizontalAlignment="Right" />
@@ -310,54 +310,54 @@
               <ColumnDefinition Width="1" />
               <ColumnDefinition Width="36" />
             </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource LaunchPart}" Tag="7,0,0,7" Padding="0" Command="{Binding LaunchCommand}" AutomationProperties.Name="Launch"
-                    ToolTip="Start Stellaris through Steam with this playset">
+            <Button Style="{StaticResource LaunchPart}" Tag="7,0,0,7" Padding="0" Command="{Binding LaunchCommand}" AutomationProperties.Name="{local:T ui.launch}"
+                    ToolTip="{local:T ui.tip_launch}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlay}" FontSize="13" />
                 <TextBlock Text="{Binding LaunchText}" Margin="6,0,0,0" />
               </StackPanel>
             </Button>
             <Border Grid.Column="1" Background="#40000000" Margin="0,8" />
-            <Button Grid.Column="2" Style="{StaticResource LaunchPart}" Tag="0" Padding="0" Command="{Binding ResumeCommand}" AutomationProperties.Name="Resume"
+            <Button Grid.Column="2" Style="{StaticResource LaunchPart}" Tag="0" Padding="0" Command="{Binding ResumeCommand}" AutomationProperties.Name="{local:T ui.resume}"
                     ToolTip="{Binding ResumeTip}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoResume}" FontSize="13" />
-                <TextBlock Text="Resume" Margin="6,0,0,0" />
+                <TextBlock Text="{local:T ui.resume}" Margin="6,0,0,0" />
               </StackPanel>
             </Button>
             <Border Grid.Column="3" Background="#40000000" Margin="0,8" />
-            <Button x:Name="LaunchMenuButton" Grid.Column="4" Style="{StaticResource LaunchPart}" Tag="0,7,7,0" Padding="0" Click="LaunchMenu_Click" ToolTip="More ways to launch" AutomationProperties.Name="Launch options">
+            <Button x:Name="LaunchMenuButton" Grid.Column="4" Style="{StaticResource LaunchPart}" Tag="0,7,7,0" Padding="0" Click="LaunchMenu_Click" ToolTip="{local:T ui.tip_launch_more}" AutomationProperties.Name="{local:T ui.launch_options}">
               <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" />
             </Button>
           </Grid>
         </Border>
 
         <StackPanel Margin="0,16,0,0">
-          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowMods}" AutomationProperties.Name="Mods">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowMods}" AutomationProperties.Name="{local:T ui.mods}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLayers}" />
-              <TextBlock Text="Mods" Margin="10,0,0,0" />
+              <TextBlock Text="{local:T ui.mods}" Margin="10,0,0,0" />
             </StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowConflicts}" AutomationProperties.Name="Conflicts" Margin="0,2,0,0">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowConflicts}" AutomationProperties.Name="{local:T ui.conflicts}" Margin="0,2,0,0">
             <DockPanel>
               <TextBlock DockPanel.Dock="Right" Text="{Binding ConflictBadge}" Foreground="{StaticResource Faint}" FontSize="11.5" VerticalAlignment="Center" />
               <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDiff}" />
-                <TextBlock Text="Conflicts" Margin="10,0,0,0" />
+                <TextBlock Text="{local:T ui.conflicts}" Margin="10,0,0,0" />
               </StackPanel>
             </DockPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowPlugins}" AutomationProperties.Name="Plugins" Margin="0,2,0,0">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowPlugins}" AutomationProperties.Name="{local:T ui.plugins}" Margin="0,2,0,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlugin}" />
-              <TextBlock Text="Plugins" Margin="10,0,0,0" />
+              <TextBlock Text="{local:T ui.plugins}" Margin="10,0,0,0" />
             </StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowLogs}" AutomationProperties.Name="Logs" Margin="0,2,0,0">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="nav" IsChecked="{Binding ShowLogs}" AutomationProperties.Name="{local:T ui.logs}" Margin="0,2,0,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLog}" />
-              <TextBlock Text="Logs" Margin="10,0,0,0" />
+              <TextBlock Text="{local:T ui.logs}" Margin="10,0,0,0" />
             </StackPanel>
           </RadioButton>
         </StackPanel>
@@ -383,8 +383,8 @@
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLayers}" FontSize="18" />
               </Border>
               <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Mods" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="Add mods on the left. Order and switch them on the right." Foreground="{StaticResource Muted}" FontSize="12.5" />
+                <TextBlock Text="{local:T ui.mods}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{local:T ui.mods_subtitle}" Foreground="{StaticResource Muted}" FontSize="12.5" />
               </StackPanel>
               <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding IndexStatus}" Foreground="{StaticResource Faint}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -394,16 +394,16 @@
                     </Style>
                   </TextBlock.Style>
                 </TextBlock>
-                <Button x:Name="AddModButton" Style="{StaticResource IconButton}" Click="AddMod_Click" ToolTip="Create a mod or install one from an archive" AutomationProperties.Name="Add a mod">
+                <Button x:Name="AddModButton" Style="{StaticResource IconButton}" Click="AddMod_Click" ToolTip="{local:T ui.tip_add_mod}" AutomationProperties.Name="{local:T ui.add_a_mod}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" />
                 </Button>
-                <Button Style="{StaticResource IconButton}" Command="{Binding ToggleDetailsCommand}" ToolTip="Show or hide the mod details (Alt+Enter)" AutomationProperties.Name="Mod details">
+                <Button Style="{StaticResource IconButton}" Command="{Binding ToggleDetailsCommand}" ToolTip="{local:T ui.tip_toggle_details}" AutomationProperties.Name="{local:T ui.mod_details}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoInfo}" />
                 </Button>
-                <Button Style="{StaticResource IconButton}" Command="{Binding RescanCommand}" ToolTip="Rescan mods" AutomationProperties.Name="Rescan mods">
+                <Button Style="{StaticResource IconButton}" Command="{Binding RescanCommand}" ToolTip="{local:T ui.rescan_mods}" AutomationProperties.Name="{local:T ui.rescan_mods}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoSync}" />
                 </Button>
-                <Button Style="{StaticResource IconButton}" Command="{Binding OpenModFolderCommand}" ToolTip="Open the mod folder" AutomationProperties.Name="Open the mod folder">
+                <Button Style="{StaticResource IconButton}" Command="{Binding OpenModFolderCommand}" ToolTip="{local:T ui.open_mod_folder}" AutomationProperties.Name="{local:T ui.open_mod_folder}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFolder}" />
                 </Button>
               </StackPanel>
@@ -415,8 +415,8 @@
                     Visibility="{Binding HasDrift, Converter={StaticResource BoolToVis}}">
               <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                  <Button Style="{StaticResource GhostButton}" Content="Import as a playset" Command="{Binding ImportDriftCommand}" Padding="10,5" />
-                  <Button Style="{StaticResource GhostButton}" Content="Dismiss" Command="{Binding IgnoreDriftCommand}" Padding="10,5" Margin="6,0,0,0" />
+                  <Button Style="{StaticResource GhostButton}" Content="{local:T ui.import_as_playset}" Command="{Binding ImportDriftCommand}" Padding="10,5" />
+                  <Button Style="{StaticResource GhostButton}" Content="{local:T ui.dismiss}" Command="{Binding IgnoreDriftCommand}" Padding="10,5" Margin="6,0,0,0" />
                 </StackPanel>
                 <TextBlock Text="{Binding DriftText}" TextWrapping="Wrap" VerticalAlignment="Center" />
               </DockPanel>
@@ -429,7 +429,7 @@
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                         <Button Style="{StaticResource GhostButton}" Content="{Binding ActionText}" Command="{Binding ActionCommand}" Padding="10,5"
                                 Visibility="{Binding HasAction, Converter={StaticResource BoolToVis}}" />
-                        <Button Style="{StaticResource GhostButton}" Content="Dismiss" Command="{Binding DismissCommand}" Padding="10,5" Margin="6,0,0,0" />
+                        <Button Style="{StaticResource GhostButton}" Content="{local:T ui.dismiss}" Command="{Binding DismissCommand}" Padding="10,5" Margin="6,0,0,0" />
                       </StackPanel>
                       <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </DockPanel>
@@ -448,7 +448,7 @@
 
               <!-- Drag the gap between the panes to resize them -->
               <GridSplitter x:Name="PaneSplitter" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Columns"
-                            ResizeBehavior="PreviousAndNext" Cursor="SizeWE" ToolTip="Drag to resize the lists" Style="{StaticResource PaneSplitter}" />
+                            ResizeBehavior="PreviousAndNext" Cursor="SizeWE" ToolTip="{local:T ui.tip_resize_lists}" Style="{StaticResource PaneSplitter}" />
 
               <!-- Installed card: the pane, or a thin strip when collapsed -->
               <Border Grid.Column="0" Style="{StaticResource Pane}" />
@@ -462,10 +462,10 @@
                   </Style>
                 </Border.Style>
                 <StackPanel Margin="0,10,0,0" HorizontalAlignment="Center">
-                  <Button Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="Show the installed mods" AutomationProperties.Name="Show the installed mods">
+                  <Button Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="{local:T ui.show_installed}" AutomationProperties.Name="{local:T ui.show_installed}">
                     <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevRight}" />
                   </Button>
-                  <TextBlock Text="Installed" Foreground="{StaticResource Faint}" FontSize="11.5" Margin="0,12,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="{local:T ui.installed}" Foreground="{StaticResource Faint}" FontSize="11.5" Margin="0,12,0,0" HorizontalAlignment="Center">
                     <TextBlock.LayoutTransform><RotateTransform Angle="90" /></TextBlock.LayoutTransform>
                   </TextBlock>
                 </StackPanel>
@@ -486,28 +486,28 @@
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <DockPanel Margin="12,8,12,8" Height="32">
-                  <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="Hide the installed mods" AutomationProperties.Name="Hide the installed mods">
+                  <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Command="{Binding ToggleLibraryCommand}" ToolTip="{local:T ui.hide_installed}" AutomationProperties.Name="{local:T ui.hide_installed}">
                     <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoCollapse}" />
                   </Button>
                   <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,12,0">
-                    <TextBlock Text="Installed" FontWeight="SemiBold" />
+                    <TextBlock Text="{local:T ui.installed}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding InstalledCountText}" Foreground="{StaticResource Faint}" Margin="7,0,0,0" />
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="All" IsChecked="{Binding IsGroupAll}" />
-                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="Source" IsChecked="{Binding IsGroupSource}" />
+                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="{local:T ui.all}" IsChecked="{Binding IsGroupAll}" />
+                    <RadioButton Style="{StaticResource TabButton}" GroupName="grp" Content="{local:T ui.source}" IsChecked="{Binding IsGroupSource}" />
                   </StackPanel>
                 </DockPanel>
                 <DockPanel Grid.Row="1" Margin="12,0,12,8">
                   <Button x:Name="FilterButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Margin="8,0,0,0" Click="InstalledFilter_Click"
-                          ToolTip="Filter and sort the installed mods" AutomationProperties.Name="Filter and sort">
+                          ToolTip="{local:T ui.tip_filter_sort}" AutomationProperties.Name="{local:T ui.filter_and_sort}">
                     <Grid>
                       <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFilter}" />
                       <Ellipse Width="7" Height="7" Fill="{StaticResource Accent}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-5,0"
                                Visibility="{Binding FilterActive, Converter={StaticResource BoolToVis}}" />
                     </Grid>
                   </Button>
-                  <TextBox x:Name="InstalledSearchBox" Style="{StaticResource SearchBox}" Tag="Search mods" AutomationProperties.Name="Search installed mods"
+                  <TextBox x:Name="InstalledSearchBox" Style="{StaticResource SearchBox}" Tag="{local:T ui.search_mods}" AutomationProperties.Name="{local:T ui.search_installed_mods}"
                            Text="{Binding InstalledSearch, UpdateSourceTrigger=PropertyChanged}" />
                 </DockPanel>
                 <Border Grid.Row="2" BorderBrush="{StaticResource LineStrong}" BorderThickness="0,1">
@@ -519,18 +519,18 @@
                       <ColumnDefinition Width="108" />
                       <ColumnDefinition Width="56" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.ColumnSpan="2" Text="{local:T ui.name}" Style="{StaticResource HeaderText}" VerticalAlignment="Center" />
                     <Border Grid.Column="2" Style="{StaticResource VDivider}" />
-                    <Image Grid.Column="2" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a broken one that it turns them off"
-                           AutomationProperties.Name="Achievements" />
+                    <Image Grid.Column="2" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="{local:T ui.tip_achievements}"
+                           AutomationProperties.Name="{local:T ui.achievements}" />
                     <Border Grid.Column="3" Style="{StaticResource VDivider}" />
-                    <TextBlock Grid.Column="3" Text="Game version" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    <TextBlock Grid.Column="3" Text="{local:T ui.game_version}" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="12,0,0,0" />
                     <Border Grid.Column="4" Style="{StaticResource VDivider}" />
                   </Grid>
                 </Border>
                 <ListBox Grid.Row="3" x:Name="InstalledList" ItemsSource="{Binding InstalledView}" ItemTemplate="{StaticResource InstalledRow}"
                          Margin="0,0,0,8" VirtualizingPanel.ScrollUnit="Pixel" PreviewKeyDown="InstalledList_PreviewKeyDown" ItemContainerStyle="{StaticResource InstalledItem}" SelectionMode="Extended" SelectionChanged="InstalledList_SelectionChanged"
-                         AutomationProperties.Name="Installed mods">
+                         AutomationProperties.Name="{local:T ui.installed_mods}">
                   <ListBox.GroupStyle>
                     <GroupStyle ContainerStyle="{StaticResource GroupItemStyle}" />
                   </ListBox.GroupStyle>
@@ -539,15 +539,15 @@
                 <Border Grid.Row="4" Margin="12,0,12,12" Padding="12,6" CornerRadius="8" Background="{StaticResource Bg3}"
                         Visibility="{Binding HasMultiSelection, Converter={StaticResource BoolToVis}}">
                   <DockPanel>
-                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding ClearInstalledSelectionCommand}" ToolTip="Clear the selection" AutomationProperties.Name="Clear the selection">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding ClearInstalledSelectionCommand}" ToolTip="{local:T ui.clear_selection}" AutomationProperties.Name="{local:T ui.clear_selection}">
                       <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoClose}" FontSize="11" />
                     </Button>
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedInstalledCount, StringFormat={}{0} selected}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedInstalledCount, StringFormat={local:T ui.selected_count_format}}" VerticalAlignment="Center" Margin="8,0,0,0" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                       <Button Style="{StaticResource GhostButton}" Command="{Binding AddSelectedToPlaysetCommand}" Padding="10,5">
                         <StackPanel Orientation="Horizontal">
                           <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" FontSize="12" />
-                          <TextBlock Text="Add to playset" Margin="7,0,0,0" />
+                          <TextBlock Text="{local:T ui.add_to_playset}" Margin="7,0,0,0" />
                         </StackPanel>
                       </Button>
                     </StackPanel>
@@ -565,24 +565,24 @@
                   <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <StackPanel Margin="12,8,12,8" Height="32" Orientation="Horizontal">
-                  <TextBlock Text="Load order" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{local:T ui.load_order}" FontWeight="SemiBold" VerticalAlignment="Center" />
                   <Button x:Name="AddSeparatorButton" Style="{StaticResource GhostButton}" Margin="12,0,0,0" Padding="9,4" Click="AddSeparator_Click"
-                          ToolTip="Add a separator: a label for a group of mods" AutomationProperties.Name="Add separator">
+                          ToolTip="{local:T ui.tip_add_separator}" AutomationProperties.Name="{local:T ui.add_separator}">
                     <StackPanel Orientation="Horizontal">
                       <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoAdd}" FontSize="11" />
-                      <TextBlock Text="Separator" Margin="6,0,0,0" />
+                      <TextBlock Text="{local:T ui.separator}" Margin="6,0,0,0" />
                     </StackPanel>
                   </Button>
                 </StackPanel>
                 <DockPanel Grid.Row="1" Margin="12,0,12,8">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindNextCommand}" ToolTip="Next match" AutomationProperties.Name="Next match">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindNextCommand}" ToolTip="{local:T ui.next_match}" AutomationProperties.Name="{local:T ui.next_match}">
                     <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevDown}" FontSize="11" />
                   </Button>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindPreviousCommand}" ToolTip="Previous match" AutomationProperties.Name="Previous match">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="26" Height="26" Command="{Binding FindPreviousCommand}" ToolTip="{local:T ui.previous_match}" AutomationProperties.Name="{local:T ui.previous_match}">
                     <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoChevUp}" FontSize="11" />
                   </Button>
                   <TextBlock DockPanel.Dock="Right" Text="{Binding FindStatus}" Foreground="{StaticResource Muted}" FontSize="11.5" VerticalAlignment="Center" Margin="8,0,4,0" />
-                  <TextBox x:Name="FindBox" Style="{StaticResource SearchBox}" Tag="Search enabled" AutomationProperties.Name="Search enabled mods"
+                  <TextBox x:Name="FindBox" Style="{StaticResource SearchBox}" Tag="{local:T ui.search_enabled}" AutomationProperties.Name="{local:T ui.search_enabled_mods}"
                            Text="{Binding FindText, UpdateSourceTrigger=PropertyChanged}" KeyDown="FindBox_KeyDown" />
                 </DockPanel>
                 <Border Grid.Row="2" BorderBrush="{StaticResource LineStrong}" BorderThickness="0,1">
@@ -595,17 +595,17 @@
                       <ColumnDefinition Width="36" />
                       <ColumnDefinition Width="62" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="Number" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="2,0,0,0" />
+                    <TextBlock Grid.Column="1" Text="{local:T ui.number}" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="2,0,0,0" />
                     <Border Grid.Column="2" Style="{StaticResource VDivider}" />
-                    <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Text="Name" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Text="{local:T ui.name}" Style="{StaticResource HeaderText}" VerticalAlignment="Center" Margin="8,0,0,0" />
                     <Border Grid.Column="4" Style="{StaticResource VDivider}" />
-                    <Image Grid.Column="4" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="Achievements: a trophy means the mod leaves them on, a broken one that it turns them off"
-                           AutomationProperties.Name="Achievements" />
+                    <Image Grid.Column="4" Source="{StaticResource TrophyOk}" Width="14" Height="14" Opacity="0.75" ToolTip="{local:T ui.tip_achievements}"
+                           AutomationProperties.Name="{local:T ui.achievements}" />
                     <Border Grid.Column="5" Style="{StaticResource VDivider}" />
                   </Grid>
                 </Border>
                 <ListBox Grid.Row="3" x:Name="OrderList" ItemsSource="{Binding LoadOrder}" SelectedItem="{Binding SelectedRow}" ItemTemplateSelector="{StaticResource OrderSelector}"
-                         Margin="0,0,0,8" VirtualizingPanel.ScrollUnit="Pixel" SelectionMode="Extended" PreviewKeyDown="OrderList_PreviewKeyDown" AllowDrop="True" PreviewDragOver="OrderList_PreviewDragOver" DragOver="OrderList_DragOver" Drop="OrderList_Drop" ItemContainerStyle="{StaticResource OrderItem}" SelectionChanged="OrderList_SelectionChanged" AutomationProperties.Name="Load order" />
+                         Margin="0,0,0,8" VirtualizingPanel.ScrollUnit="Pixel" SelectionMode="Extended" PreviewKeyDown="OrderList_PreviewKeyDown" AllowDrop="True" PreviewDragOver="OrderList_PreviewDragOver" DragOver="OrderList_DragOver" Drop="OrderList_Drop" ItemContainerStyle="{StaticResource OrderItem}" SelectionChanged="OrderList_SelectionChanged" AutomationProperties.Name="{local:T ui.load_order}" />
                 <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="32,56,32,0" IsHitTestVisible="False">
                   <StackPanel.Style>
                     <Style TargetType="StackPanel">
@@ -613,9 +613,9 @@
                       <Style.Triggers><DataTrigger Binding="{Binding LoadOrder.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style>
                   </StackPanel.Style>
-                  <TextBlock Text="No mods in this playset yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  <TextBlock Text="{local:T ui.empty_playset_title}" FontWeight="SemiBold" HorizontalAlignment="Center" />
                   <TextBlock Style="{StaticResource EmptyHint}" Margin="0,6,0,0" VerticalAlignment="Center"
-                             Text="Add mods with the + buttons in the Installed list, or import a playset from the playset menu." />
+                             Text="{local:T ui.empty_playset_hint}" />
                 </StackPanel>
               </Grid>
 
@@ -624,15 +624,15 @@
                       BorderThickness="1" CornerRadius="8" Visibility="{Binding DetailsOpen, Converter={StaticResource BoolToVis}}">
                 <DockPanel>
                   <Grid DockPanel.Dock="Top" Margin="16,10,8,0" Height="32">
-                    <TextBlock Text="Details" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{local:T ui.details}" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Button Style="{StaticResource IconButton}" Width="26" Height="26" HorizontalAlignment="Right" Command="{Binding CloseDetailsCommand}"
-                            ToolTip="Close (Esc)" AutomationProperties.Name="Close the details">
+                            ToolTip="{local:T ui.tip_close_details}" AutomationProperties.Name="{local:T ui.close_details}">
                       <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoClose}" FontSize="11" />
                     </Button>
                   </Grid>
                   <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,8,16,16">
-                      <TextBlock Text="Select a mod to see its details." Foreground="{StaticResource Muted}" Margin="0,24,0,0" HorizontalAlignment="Center">
+                      <TextBlock Text="{local:T ui.select_mod_hint}" Foreground="{StaticResource Muted}" Margin="0,24,0,0" HorizontalAlignment="Center">
                         <TextBlock.Style>
                           <Style TargetType="TextBlock">
                             <Style.Triggers><DataTrigger Binding="{Binding HasDetails}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
@@ -664,8 +664,8 @@
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <StackPanel Visibility="{Binding DetailsHasDependencies, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
-                          <TextBlock Text="Asks to load after" Foreground="{StaticResource Faint}" Margin="0,0,0,2" ToolTip="The descriptor lists these mods so they load first. It does not mean this mod needs them." />
-                          <TextBlock Text="Only an ordering hint from the mod's author, not a requirement." Foreground="{StaticResource Faint}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap" />
+                          <TextBlock Text="{local:T ui.asks_load_after}" Foreground="{StaticResource Faint}" Margin="0,0,0,2" ToolTip="{local:T ui.tip_load_after}" />
+                          <TextBlock Text="{local:T ui.load_after_hint}" Foreground="{StaticResource Faint}" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap" />
                           <ItemsControl ItemsSource="{Binding DependencyLines}" Focusable="False">
                             <ItemsControl.ItemTemplate>
                               <DataTemplate>
@@ -689,19 +689,19 @@
                           </ItemsControl>
                         </StackPanel>
                         <StackPanel Margin="0,8,0,0">
-                          <TextBlock Text="Note" Foreground="{StaticResource Faint}" Margin="0,0,0,4" />
+                          <TextBlock Text="{local:T ui.note}" Foreground="{StaticResource Faint}" Margin="0,0,0,4" />
                           <!-- Enabled only for installed mods, which is also when the playset button works. -->
                           <TextBox Style="{StaticResource MultiLineBox}" Text="{Binding DetailsNote, UpdateSourceTrigger=PropertyChanged}" MinHeight="64" MaxHeight="160"
-                                   IsEnabled="{Binding DetailsCanChangePlayset}" AutomationProperties.Name="Note" ToolTip="Only you see this" />
+                                   IsEnabled="{Binding DetailsCanChangePlayset}" AutomationProperties.Name="{local:T ui.note}" ToolTip="{local:T ui.tip_note_private}" />
                         </StackPanel>
                         <StackPanel Margin="0,16,0,0">
                           <Button Style="{StaticResource PrimaryButton}" Content="{Binding DetailsPlaysetButtonText}" Command="{Binding ToggleDetailsPlaysetCommand}"
                                   IsEnabled="{Binding DetailsCanChangePlayset}" HorizontalAlignment="Stretch" Padding="10,7" />
-                          <Button Content="Open in Plugins" Command="{Binding OpenDetailsPluginCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                          <Button Content="{local:T ui.open_in_plugins}" Command="{Binding OpenDetailsPluginCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
                                 Visibility="{Binding DetailsHasPlugin, Converter={StaticResource BoolToVis}}" />
-                        <Button Content="Open the mod folder" Command="{Binding OpenDetailsFolderCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                        <Button Content="{local:T ui.open_mod_folder}" Command="{Binding OpenDetailsFolderCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
                                   Visibility="{Binding DetailsHasFolder, Converter={StaticResource BoolToVis}}" />
-                          <Button Content="Open on the Workshop" Command="{Binding OpenDetailsWorkshopCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
+                          <Button Content="{local:T ui.open_workshop}" Command="{Binding OpenDetailsWorkshopCommand}" Margin="0,6,0,0" HorizontalAlignment="Stretch" Padding="10,7"
                                   Visibility="{Binding DetailsHasWorkshop, Converter={StaticResource BoolToVis}}" />
                         </StackPanel>
                       </StackPanel>
@@ -720,8 +720,8 @@
                 </Border.Style>
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="{Binding Message}" VerticalAlignment="Center" />
-                  <Button Style="{StaticResource GhostButton}" Content="Undo" Margin="12,0,0,0" Padding="10,2" Command="{Binding UndoCommand}"
-                          Visibility="{Binding MessageHasUndo, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Undo" />
+                  <Button Style="{StaticResource GhostButton}" Content="{local:T ui.undo}" Margin="12,0,0,0" Padding="10,2" Command="{Binding UndoCommand}"
+                          Visibility="{Binding MessageHasUndo, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="{local:T ui.undo}" />
                 </StackPanel>
               </Border>
             </Grid>
@@ -744,21 +744,21 @@
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDiff}" FontSize="18" />
               </Border>
               <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Conflicts" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="Instances of multiple enabled mods (or a mod and the basegame) defining the same thing, and which takes priority" Foreground="{StaticResource Muted}" FontSize="12.5" />
+                <TextBlock Text="{local:T ui.conflicts}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{local:T ui.conflicts_subtitle}" Foreground="{StaticResource Muted}" FontSize="12.5" />
               </StackPanel>
               <TextBlock Grid.Column="2" Text="{Binding ConflictsShownText}" Foreground="{StaticResource Faint}" VerticalAlignment="Center" />
             </Grid>
             <DockPanel Grid.Row="1" Margin="12,0,12,8">
-              <CheckBox DockPanel.Dock="Right" Content="Exclude vanilla" IsChecked="{Binding ExcludeVanilla}" Margin="12,0,0,0"
-                        ToolTip="Hide conflicts where a single mod only replaces something of the game's" />
+              <CheckBox DockPanel.Dock="Right" Content="{local:T ui.exclude_vanilla}" IsChecked="{Binding ExcludeVanilla}" Margin="12,0,0,0"
+                        ToolTip="{local:T ui.tip_exclude_vanilla}" />
               <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,12,0">
-                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="All" IsChecked="{Binding IsConflictAll}" />
-                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Files" IsChecked="{Binding IsConflictFile}" ToolTip="The same file path in more than one place" />
-                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Definitions" IsChecked="{Binding IsConflictDefinition}" ToolTip="The same technology, building, event... defined more than once" />
-                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="Text" IsChecked="{Binding IsConflictText}" ToolTip="The same text key in more than one place" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="{local:T ui.all}" IsChecked="{Binding IsConflictAll}" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="{local:T ui.files}" IsChecked="{Binding IsConflictFile}" ToolTip="{local:T ui.tip_conflict_file}" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="{local:T ui.definitions}" IsChecked="{Binding IsConflictDefinition}" ToolTip="{local:T ui.tip_conflict_definition}" />
+                <RadioButton Style="{StaticResource TabButton}" GroupName="ckind" Content="{local:T ui.text}" IsChecked="{Binding IsConflictText}" ToolTip="{local:T ui.tip_conflict_text}" />
               </StackPanel>
-              <TextBox Style="{StaticResource SearchBox}" Tag="Search conflicts" AutomationProperties.Name="Search conflicts"
+              <TextBox Style="{StaticResource SearchBox}" Tag="{local:T ui.search_conflicts}" AutomationProperties.Name="{local:T ui.search_conflicts}"
                        Text="{Binding ConflictSearch, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
             <Grid Grid.Row="2" Margin="12,0,12,12">
@@ -776,7 +776,7 @@
                     </Style>
                   </TextBlock.Style>
                 </TextBlock>
-                <ListBox x:Name="ConflictList" Margin="0,8" ItemsSource="{Binding ConflictsView}" SelectedItem="{Binding SelectedConflict}" AutomationProperties.Name="Conflicts">
+                <ListBox x:Name="ConflictList" Margin="0,8" ItemsSource="{Binding ConflictsView}" SelectedItem="{Binding SelectedConflict}" AutomationProperties.Name="{local:T ui.conflicts}">
                   <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:ConflictRowViewModel}">
                       <StackPanel Height="50" Margin="16,0,12,0" VerticalAlignment="Center">
@@ -795,7 +795,7 @@
               <TextBlock Style="{StaticResource EmptyHint}" Text="{Binding ConflictsEmptyText}" />
 
               <Border Grid.Column="2" Style="{StaticResource Pane}" />
-              <TextBlock Grid.Column="2" Text="Select a conflict to see which takes priority" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
+              <TextBlock Grid.Column="2" Text="{local:T ui.select_conflict_hint}" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock">
                     <Style.Triggers><DataTrigger Binding="{Binding SelectedConflict}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
@@ -812,11 +812,11 @@
                 <StackPanel Margin="16,14,16,16">
                   <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
                   <TextBlock Foreground="{StaticResource Faint}" Margin="0,2,0,12">
-                    <Run Text="{Binding KindText, Mode=OneWay}" /><Run Text=" in " /><Run Text="{Binding Domain, Mode=OneWay}" />
+                    <Run Text="{Binding KindText, Mode=OneWay}" /><Run Text="{local:T ui.kind_in_domain}" /><Run Text="{Binding Domain, Mode=OneWay}" />
                   </TextBlock>
                   <TextBlock Text="{Binding WhyHeading}" Foreground="{StaticResource Faint}" Margin="0,0,0,2" />
                   <TextBlock Text="{Binding Why}" TextWrapping="Wrap" />
-                  <TextBlock Text="The winning mod's descriptor asks to load after the mods it overrides, so this is probably on purpose." TextWrapping="Wrap"
+                  <TextBlock Text="{local:T ui.conflict_intended}" TextWrapping="Wrap"
                              Foreground="{StaticResource Muted}" Margin="0,8,0,0">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock">
@@ -825,7 +825,7 @@
                       </Style>
                     </TextBlock.Style>
                   </TextBlock>
-                  <TextBlock Text="In load order" Foreground="{StaticResource Faint}" Margin="0,16,0,6" />
+                  <TextBlock Text="{local:T ui.in_load_order}" Foreground="{StaticResource Faint}" Margin="0,16,0,6" />
                   <ItemsControl ItemsSource="{Binding Entries}" Focusable="False">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
@@ -872,11 +872,11 @@
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoPlugin}" FontSize="18" />
               </Border>
               <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Plugins" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="Runs code inside the game. Only approve plugins you trust." Foreground="{StaticResource Muted}" FontSize="12.5" />
+                <TextBlock Text="{local:T ui.plugins}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{local:T ui.plugins_subtitle}" Foreground="{StaticResource Muted}" FontSize="12.5" />
               </StackPanel>
-              <CheckBox Grid.Column="2" Content="Load plugins" IsChecked="{Binding PluginsEnabled}" VerticalAlignment="Center"
-                        ToolTip="The master switch. Off, the game starts with no plugins at all." />
+              <CheckBox Grid.Column="2" Content="{local:T ui.load_plugins}" IsChecked="{Binding PluginsEnabled}" VerticalAlignment="Center"
+                        ToolTip="{local:T ui.tip_plugins_master}" />
             </Grid>
             <Border Grid.Row="1" Margin="16,0,16,10" Padding="14,10" CornerRadius="8" Background="{StaticResource Bg3}">
               <StackPanel>
@@ -904,10 +904,10 @@
                 <WrapPanel Margin="0,10,0,0">
                   <Button Style="{StaticResource PrimaryButton}" Content="{Binding InstallOrionText}" Command="{Binding InstallOrionCommand}"
                           Visibility="{Binding CanInstallOrion, Converter={StaticResource BoolToVis}}" Padding="14,7" Margin="0,0,8,0" />
-                  <Button Content="Remove Orion" Command="{Binding RemoveOrionCommand}" Visibility="{Binding CanRemoveOrion, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
-                  <Button Content="Allow plugins on this build…" Command="{Binding AllowBuildCommand}" Visibility="{Binding CanAllowBuild, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0"
-                          ToolTip="For a game version nobody has verified Orion against. Applies to this exact build only." />
-                  <Button Content="Stop allowing plugins on this build" Command="{Binding StopAllowingBuildCommand}" Visibility="{Binding CanStopAllowing, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
+                  <Button Content="{local:T ui.remove_orion}" Command="{Binding RemoveOrionCommand}" Visibility="{Binding CanRemoveOrion, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
+                  <Button Content="{local:T ui.allow_build}" Command="{Binding AllowBuildCommand}" Visibility="{Binding CanAllowBuild, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0"
+                          ToolTip="{local:T ui.tip_allow_build}" />
+                  <Button Content="{local:T ui.stop_allowing_build}" Command="{Binding StopAllowingBuildCommand}" Visibility="{Binding CanStopAllowing, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="0,0,8,0" />
                 </WrapPanel>
               </StackPanel>
             </Border>
@@ -918,7 +918,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <Border Style="{StaticResource Pane}" />
-              <ListBox Margin="0,8" ItemsSource="{Binding PluginRows}" SelectedItem="{Binding SelectedPlugin}" ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Plugins">
+              <ListBox Margin="0,8" ItemsSource="{Binding PluginRows}" SelectedItem="{Binding SelectedPlugin}" ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="{local:T ui.plugins}">
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <DockPanel Height="44" Margin="16,0,12,0">
@@ -938,7 +938,7 @@
               <TextBlock Style="{StaticResource EmptyHint}" Text="{Binding PluginsEmptyText}" />
 
               <Border Grid.Column="2" Style="{StaticResource Pane}" />
-              <TextBlock Grid.Column="2" Text="Select a plugin" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
+              <TextBlock Grid.Column="2" Text="{local:T ui.select_plugin_hint}" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,56,16,0">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -970,25 +970,25 @@
                              Visibility="{Binding HasLastRun, Converter={StaticResource BoolToVis}}" />
 
                   <StackPanel Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Files" Foreground="{StaticResource Faint}" Margin="0,16,0,4" />
+                    <TextBlock Text="{local:T ui.files}" Foreground="{StaticResource Faint}" Margin="0,16,0,4" />
                     <TextBlock Text="{Binding Files}" FontFamily="Consolas" FontSize="11.5" TextWrapping="Wrap" />
                   </StackPanel>
 
                   <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                    <Button Style="{StaticResource PrimaryButton}" Content="Approve…" Command="{Binding DataContext.ApproveSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    <Button Style="{StaticResource PrimaryButton}" Content="{local:T ui.approve}" Command="{Binding DataContext.ApproveSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             Visibility="{Binding NeedsApproval, Converter={StaticResource BoolToVis}}" Padding="14,7" />
-                    <Button Content="Take back approval" Command="{Binding DataContext.RevokeSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    <Button Content="{local:T ui.take_back_approval}" Command="{Binding DataContext.RevokeSelectedPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             Visibility="{Binding IsApproved, Converter={StaticResource BoolToVis}}" Padding="12,7" Margin="8,0,0,0" />
-                    <Button Content="Open the folder" Command="{Binding DataContext.OpenSelectedPluginFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}" Padding="12,7" Margin="8,0,0,0" />
+                    <Button Content="{local:T ui.open_folder}" Command="{Binding DataContext.OpenSelectedPluginFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}" Padding="12,7" Margin="8,0,0,0" />
                   </StackPanel>
-                  <CheckBox Content="Approve new versions automatically (follow updates)" IsChecked="{Binding FollowUpdates}" Margin="0,14,0,0"
+                  <CheckBox Content="{local:T ui.follow_updates}" IsChecked="{Binding FollowUpdates}" Margin="0,14,0,0"
                             Visibility="{Binding IsApproved, Converter={StaticResource BoolToVis}}"
-                            ToolTip="Off by default. On, a changed file is approved without asking again: a compromised update would then load silently." />
+                            ToolTip="{local:T ui.tip_follow_updates}" />
                   <StackPanel Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
-                  <CheckBox Content="Run this plugin in the current playset" IsChecked="{Binding OnHere}" IsEnabled="{Binding CanSetup}" Margin="0,8,0,0"
-                            ToolTip="Off, the mod's scripts still load but its plugin does not." />
+                  <CheckBox Content="{local:T ui.run_plugin_here}" IsChecked="{Binding OnHere}" IsEnabled="{Binding CanSetup}" Margin="0,8,0,0"
+                            ToolTip="{local:T ui.tip_run_plugin_here}" />
 
-                  <TextBlock Text="Settings for this playset" FontWeight="SemiBold" Margin="0,22,0,8" />
+                  <TextBlock Text="{local:T ui.playset_settings}" FontWeight="SemiBold" Margin="0,22,0,8" />
                   <TextBlock Text="{Binding SettingsNote}" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
                              Visibility="{Binding HasSettingsNote, Converter={StaticResource BoolToVis}}" />
                   <ItemsControl ItemsSource="{Binding Settings}" Focusable="False">
@@ -1015,7 +1015,7 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <Button Content="Reset to defaults" Command="{Binding DataContext.ResetPluginSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" HorizontalAlignment="Left" Padding="12,6"
+                  <Button Content="{local:T ui.reset_defaults}" Command="{Binding DataContext.ResetPluginSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" HorizontalAlignment="Left" Padding="12,6"
                           Visibility="{Binding HasSettings, Converter={StaticResource BoolToVis}}" />
                   </StackPanel>
                 </StackPanel>
@@ -1039,17 +1039,17 @@
                 <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoLog}" FontSize="18" />
               </Border>
               <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Logs" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="Artemis's own log, and what Stellaris and its plugins write, live while the game runs. Problems with mods show up in error.log." Foreground="{StaticResource Muted}" FontSize="12.5" />
+                <TextBlock Text="{local:T ui.logs}" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{local:T ui.logs_subtitle}" Foreground="{StaticResource Muted}" FontSize="12.5" />
               </StackPanel>
               <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Style="{StaticResource IconButton}" Command="{Binding CleanUpLogsCommand}" ToolTip="Clean up old logs…" AutomationProperties.Name="Clean up old logs">
+                <Button Style="{StaticResource IconButton}" Command="{Binding CleanUpLogsCommand}" ToolTip="{local:T ui.tip_clean_logs}" AutomationProperties.Name="{local:T ui.clean_logs}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoDelete}" />
                 </Button>
-                <Button Style="{StaticResource IconButton}" Command="{Binding RefreshLogsCommand}" ToolTip="Read this log again from its end" AutomationProperties.Name="Refresh the logs">
+                <Button Style="{StaticResource IconButton}" Command="{Binding RefreshLogsCommand}" ToolTip="{local:T ui.tip_refresh_logs}" AutomationProperties.Name="{local:T ui.refresh_logs}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoSync}" />
                 </Button>
-                <Button Style="{StaticResource IconButton}" Command="{Binding OpenLogFolderCommand}" ToolTip="Open the logs folder" AutomationProperties.Name="Open the logs folder">
+                <Button Style="{StaticResource IconButton}" Command="{Binding OpenLogFolderCommand}" ToolTip="{local:T ui.open_logs_folder}" AutomationProperties.Name="{local:T ui.open_logs_folder}">
                   <TextBlock Style="{StaticResource Icon}" Text="{StaticResource IcoFolder}" />
                 </Button>
               </StackPanel>
@@ -1061,7 +1061,7 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <Border Style="{StaticResource Pane}" />
-              <ListBox x:Name="LogList" Margin="0,8" ScrollViewer.VerticalScrollBarVisibility="Auto" ItemsSource="{Binding LogFiles}" SelectedItem="{Binding SelectedLog}" AutomationProperties.Name="Log files">
+              <ListBox x:Name="LogList" Margin="0,8" ScrollViewer.VerticalScrollBarVisibility="Auto" ItemsSource="{Binding LogFiles}" SelectedItem="{Binding SelectedLog}" AutomationProperties.Name="{local:T ui.log_files}">
                 <ListBox.ItemTemplate>
                   <DataTemplate><Border Height="30"><TextBlock Text="{Binding Name}" Margin="16,0" VerticalAlignment="Center" /></Border></DataTemplate>
                 </ListBox.ItemTemplate>
@@ -1069,7 +1069,7 @@
               <Border Grid.Column="2" Style="{StaticResource Pane}" />
               <TextBox x:Name="LogBox" Grid.Column="2" Style="{StaticResource MultiLineBox}" Background="{StaticResource Clear}" BorderThickness="0" Margin="4"
                        IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto"
-                       FontFamily="Consolas" FontSize="12" AutomationProperties.Name="Log text" />
+                       FontFamily="Consolas" FontSize="12" AutomationProperties.Name="{local:T ui.log_text}" />
               <TextBlock Grid.ColumnSpan="3" Style="{StaticResource EmptyHint}" Text="{Binding LogsEmptyText}" />
             </Grid>
           </Grid>

@@ -47,6 +47,26 @@ public class ModFolderHealthTests
     }
 
     [Fact]
+    public void A_downloaded_workshop_item_without_a_ugc_file_gets_one_and_registered_ones_are_left_alone()
+    {
+        using var t = new TempDir();
+        var workshop = Path.Combine(t.Path, "steam", "281990");
+        t.File("steam/281990/111/descriptor.mod", Descriptor("New Portraits") + "path=\"stale\"\n");
+        t.File("steam/281990/222/descriptor.mod", Descriptor("Known"));
+        t.File("steam/281990/notes/descriptor.mod", Descriptor("Not an id"));
+        t.File("mod/ugc_222.mod", "name=\"Known\"\nremote_file_id=\"222\"\npath=\"" + Path.Combine(workshop, "222").Replace('\\', '/') + "\"\n");
+
+        var made = ModFolderHealth.RegisterWorkshop(t.Path, workshop, ModScanner.Scan(t.Path).Mods);
+        var only = Assert.Single(made);
+        Assert.Equal(("ugc_111", "New Portraits"), (only.Key, only.Name));
+        var text = File.ReadAllText(Path.Combine(t.Path, "mod", "ugc_111.mod"));
+        Assert.Contains("remote_file_id=\"111\"", text);
+        Assert.DoesNotContain("stale", text);
+        Assert.Equal(ModSource.Workshop, ModScanner.Scan(t.Path).Mods.Single(m => m.Key == "ugc_111").Source);
+        Assert.Empty(ModFolderHealth.RegisterWorkshop(t.Path, workshop, ModScanner.Scan(t.Path).Mods));   // nothing is made a second time
+    }
+
+    [Fact]
     public void Leftover_mod_files_are_sent_away_and_a_mod_that_still_has_its_files_is_never_touched()
     {
         using var t = new TempDir();

@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 using Artemis.Core.Plugins;
 
 namespace Artemis.Core.Game;
@@ -23,17 +24,17 @@ public static class LogCleanup
         if (game.Count > 0)
         {
             var latest = game.Max(f => f.LastWriteTimeUtc);
-            foreach (var f in game.Where(f => latest - f.LastWriteTimeUtc > StaleAfter)) Add(f, "not from the game's latest run");
+            foreach (var f in game.Where(f => latest - f.LastWriteTimeUtc > StaleAfter)) Add(f, Loc.T("core2.log_stale_not_latest"));
         }
 
         var orion = OrionFiles.FolderIn(userDir);
         if (Directory.Exists(orion))
-            foreach (var f in Logs(orion).Where(f => f.Name.Equals("modloader.log", StringComparison.OrdinalIgnoreCase))) Add(f, "written by an earlier loader, not by Orion");
+            foreach (var f in Logs(orion).Where(f => f.Name.Equals("modloader.log", StringComparison.OrdinalIgnoreCase))) Add(f, Loc.T("core2.log_stale_old_loader"));
         var plugins = Path.Combine(orion, "plugins");
         if (Directory.Exists(plugins))
         {
             var installed = installedPluginKeys.Select(SafeFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var f in Logs(plugins).Where(f => !installed.Contains(Path.GetFileNameWithoutExtension(f.Name)))) Add(f, "its plugin is not installed any more");
+            foreach (var f in Logs(plugins).Where(f => !installed.Contains(Path.GetFileNameWithoutExtension(f.Name)))) Add(f, Loc.T("core2.log_stale_plugin_gone"));
         }
         return found;
     }

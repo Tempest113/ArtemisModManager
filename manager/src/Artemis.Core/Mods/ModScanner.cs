@@ -1,4 +1,5 @@
 using Artemis.Core.Pdx;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Mods;
 
@@ -18,7 +19,7 @@ public static class ModScanner
             try { mods.Add(ReadOuter(file, userDir)); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                warnings.Add($"{Path.GetFileName(file)}: {ex.Message}");
+                warnings.Add(Loc.T("core.mod_file_unreadable", ("file", Path.GetFileName(file)), ("reason", ex.Message)));
             }
         }
         mods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));

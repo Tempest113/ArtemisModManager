@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Plugins;
 
@@ -45,7 +46,7 @@ public static partial class PluginManifestReader
         var file = Path.Combine(contentDir, FileName);
         if (!File.Exists(file)) return null;
         try { return Parse(File.ReadAllText(file)); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new PluginInfo(null, $"{FileName} couldn't be read: {ex.Message}"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new PluginInfo(null, Loc.T("core.manifest_unreadable", ("file", FileName), ("reason", ex.Message))); }
     }
 
     /// <summary>Checks the text field by field; every problem found is reported, the first thing wrong is what a short message shows.</summary>
@@ -53,56 +54,56 @@ public static partial class PluginManifestReader
     {
         JsonDocument doc;
         try { doc = JsonDocument.Parse(json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }); }
-        catch (JsonException ex) { return new PluginInfo(null, $"{FileName} isn't valid JSON: {ex.Message}"); }
+        catch (JsonException ex) { return new PluginInfo(null, Loc.T("core.manifest_bad_json", ("file", FileName), ("reason", ex.Message))); }
 
         using (doc)
         {
             var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object) return new PluginInfo(null, $"{FileName} must be a JSON object.");
+            if (root.ValueKind != JsonValueKind.Object) return new PluginInfo(null, Loc.T("core.manifest_not_object", ("file", FileName)));
             var errors = new List<string>();
 
             string? Text(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
             List<string> Strings(string name)
             {
                 if (!root.TryGetProperty(name, out var v)) return [];
-                if (v.ValueKind != JsonValueKind.Array || v.EnumerateArray().Any(x => x.ValueKind != JsonValueKind.String)) { errors.Add($"\"{name}\" must be a list of text."); return []; }
+                if (v.ValueKind != JsonValueKind.Array || v.EnumerateArray().Any(x => x.ValueKind != JsonValueKind.String)) { errors.Add(Loc.T("core.manifest_list_of_text", ("name", name))); return []; }
                 return v.EnumerateArray().Select(x => x.GetString()!.Trim()).Where(x => x.Length > 0).ToList();
             }
 
             if (root.TryGetProperty("schema", out var schema) && !(schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out var s) && s == SchemaVersion))
-                errors.Add($"\"schema\" must be {SchemaVersion}; this may need a newer Artemis.");
+                errors.Add(Loc.T("core.manifest_schema", ("version", SchemaVersion)));
 
             var id = Text(root, "id")?.Trim() ?? "";
-            if (!IdPattern().IsMatch(id)) errors.Add("\"id\" is missing or not 1 to 64 letters, digits, '.', '_' or '-'.");
+            if (!IdPattern().IsMatch(id)) errors.Add(Loc.T("core.manifest_id_invalid"));
             var version = Text(root, "version")?.Trim() ?? "";
-            if (version.Length == 0) errors.Add("\"version\" is missing.");
+            if (version.Length == 0) errors.Add(Loc.T("core.manifest_version_missing"));
             var apiVersion = root.TryGetProperty("apiVersion", out var api) && api.ValueKind == JsonValueKind.Number && api.TryGetInt32(out var a) && a >= 1 ? a : 0;
-            if (apiVersion == 0) errors.Add("\"apiVersion\" must be a whole number, 1 or more.");
+            if (apiVersion == 0) errors.Add(Loc.T("core.manifest_api_version"));
 
             var files = Strings("files").Select(f => f.Replace('\\', '/')).ToList();
-            if (files.Count == 0) errors.Add("\"files\" must list at least one DLL.");
+            if (files.Count == 0) errors.Add(Loc.T("core.manifest_files_empty"));
             foreach (var f in files)
-                if (!IsSafeDllPath(f)) errors.Add($"\"{f}\" isn't a DLL inside the mod's own folder.");
+                if (!IsSafeDllPath(f)) errors.Add(Loc.T("core.manifest_file_unsafe", ("file", f)));
 
             var tierText = Text(root, "stability") ?? Text(root, "tier");
             var tier = tierText?.ToLowerInvariant() switch { null or "fragile" => PluginTier.Fragile, "stable" => PluginTier.Stable, _ => (PluginTier?)null };
-            if (tier is null) errors.Add("\"stability\" must be \"stable\" or \"fragile\".");
+            if (tier is null) errors.Add(Loc.T("core.manifest_stability"));
 
             var features = new List<PluginFeature>();
             if (root.TryGetProperty("features", out var fe))
             {
-                if (fe.ValueKind != JsonValueKind.Array) errors.Add("\"features\" must be a list.");
+                if (fe.ValueKind != JsonValueKind.Array) errors.Add(Loc.T("core.manifest_features_not_list"));
                 else foreach (var f in fe.EnumerateArray()) features.Add(ReadFeature(f, errors));
             }
 
             var settings = new List<PluginSetting>();
             if (root.TryGetProperty("settings", out var se))
             {
-                if (se.ValueKind != JsonValueKind.Array) errors.Add("\"settings\" must be a list.");
+                if (se.ValueKind != JsonValueKind.Array) errors.Add(Loc.T("core.manifest_settings_not_list"));
                 else foreach (var s2 in se.EnumerateArray()) if (ReadSetting(s2, errors) is { } setting) settings.Add(setting);
             }
             var ids = features.Select(f => f.Id).Concat(settings.Select(x => x.Id)).ToList();
-            foreach (var dup in ids.GroupBy(i => i, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1)) errors.Add($"\"{dup.Key}\" is used for two settings or features.");
+            foreach (var dup in ids.GroupBy(i => i, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1)) errors.Add(Loc.T("core.manifest_duplicate_id", ("id", dup.Key)));
 
             if (errors.Count > 0) return new PluginInfo(null, string.Join(" ", errors));
             var cosmetic = root.TryGetProperty("cosmetic", out var c) && c.ValueKind == JsonValueKind.True;
@@ -119,20 +120,20 @@ public static partial class PluginManifestReader
     private static PluginFeature ReadFeature(JsonElement e, List<string> errors)
     {
         var id = e.ValueKind == JsonValueKind.Object && e.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString()! : "";
-        if (!IdPattern().IsMatch(id)) { errors.Add("A feature has a missing or invalid \"id\"."); return new PluginFeature("", "", "", false); }
+        if (!IdPattern().IsMatch(id)) { errors.Add(Loc.T("core.manifest_feature_id")); return new PluginFeature("", "", "", false); }
         return new PluginFeature(id, Str(e, "name") is { Length: > 0 } name ? name : id, Str(e, "description"), e.TryGetProperty("default", out var d) && d.ValueKind == JsonValueKind.True);
     }
 
     private static PluginSetting? ReadSetting(JsonElement e, List<string> errors)
     {
         var id = e.ValueKind == JsonValueKind.Object && e.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString()! : "";
-        if (!IdPattern().IsMatch(id)) { errors.Add("A setting has a missing or invalid \"id\"."); return null; }
+        if (!IdPattern().IsMatch(id)) { errors.Add(Loc.T("core.manifest_setting_id")); return null; }
         var type = Str(e, "type").ToLowerInvariant() switch
         {
             "bool" => SettingType.Bool, "int" => SettingType.Int, "float" => SettingType.Float,
             "enum" => SettingType.Enum, "string" => SettingType.String, "path" => SettingType.Path, _ => (SettingType?)null,
         };
-        if (type is null) { errors.Add($"Setting \"{id}\" needs a \"type\": bool, int, float, enum, string or path."); return null; }
+        if (type is null) { errors.Add(Loc.T("core.manifest_setting_type", ("id", id))); return null; }
 
         var options = new List<PluginOption>();
         if (type == SettingType.Enum)
@@ -143,12 +144,12 @@ public static partial class PluginManifestReader
                     var value = item.ValueKind == JsonValueKind.String ? item.GetString()! : item.ValueKind == JsonValueKind.Object ? Str(item, "value") : "";
                     if (value.Length > 0) options.Add(new PluginOption(value, item.ValueKind == JsonValueKind.Object && Str(item, "name") is { Length: > 0 } n ? n : value));
                 }
-            if (options.Count == 0) { errors.Add($"Setting \"{id}\" is an enum and needs \"options\"."); return null; }
+            if (options.Count == 0) { errors.Add(Loc.T("core.manifest_setting_options", ("id", id))); return null; }
         }
 
         double? min = e.TryGetProperty("min", out var mn) && mn.ValueKind == JsonValueKind.Number ? mn.GetDouble() : null;
         double? max = e.TryGetProperty("max", out var mx) && mx.ValueKind == JsonValueKind.Number ? mx.GetDouble() : null;
-        if (min > max) { errors.Add($"Setting \"{id}\" has \"min\" above \"max\"."); return null; }
+        if (min > max) { errors.Add(Loc.T("core.manifest_setting_min_max", ("id", id))); return null; }
 
         object def;
         var hasDefault = e.TryGetProperty("default", out var d);
@@ -160,8 +161,8 @@ public static partial class PluginManifestReader
             case SettingType.Enum: def = hasDefault && d.ValueKind == JsonValueKind.String ? d.GetString()! : options[0].Value; break;
             default: def = hasDefault && d.ValueKind == JsonValueKind.String ? d.GetString()! : ""; break;
         }
-        if (type == SettingType.Enum && options.All(o => o.Value != (string)def)) { errors.Add($"Setting \"{id}\" has a default that is not one of its options."); return null; }
-        if (def is long or double && (Convert.ToDouble(def) < min || Convert.ToDouble(def) > max)) { errors.Add($"Setting \"{id}\" has a default outside its range."); return null; }
+        if (type == SettingType.Enum && options.All(o => o.Value != (string)def)) { errors.Add(Loc.T("core.manifest_setting_default_option", ("id", id))); return null; }
+        if (def is long or double && (Convert.ToDouble(def) < min || Convert.ToDouble(def) > max)) { errors.Add(Loc.T("core.manifest_setting_default_range", ("id", id))); return null; }
         return new PluginSetting(id, type.Value, Str(e, "name") is { Length: > 0 } name ? name : id, Str(e, "description"), def, min, max, options);
     }
 

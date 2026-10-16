@@ -29,6 +29,11 @@ __pycache__/
 
 # Local editor/agent tooling
 .claude/
+CLAUDE.md
+
+# Packaged preview builds
+/dist/
+*-preview-*.zip
 
 # .NET build output
 bin/

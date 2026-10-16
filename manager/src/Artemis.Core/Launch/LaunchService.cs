@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 using System.Diagnostics;
 using System.Text.Json;
 using Artemis.Core.Game;
@@ -28,7 +29,7 @@ public sealed class LaunchService(GameInstall game, AppPaths paths, Func<bool>? 
     /// <summary>Writes the playset to dlc_load.json. The original file is saved once, before the first write.</summary>
     public ApplyResult Apply(Playset playset, IReadOnlyDictionary<string, ModInfo> installed)
     {
-        if (Running) throw new ArtemisException("Stellaris is running. Close it before changing the mod setup.");
+        if (Running) throw new ArtemisException(Loc.T("core2.launch_running_close"));
         var notes = new List<string>();
         var disabledDlcs = (IReadOnlyList<string>)[];
 
@@ -38,10 +39,10 @@ public sealed class LaunchService(GameInstall game, AppPaths paths, Func<bool>? 
             {
                 Directory.CreateDirectory(paths.BackupDir);
                 File.Copy(game.DlcLoadPath, OriginalBackup);
-                notes.Add("Saved a copy of the original dlc_load.json.");
+                notes.Add(Loc.T("core2.launch_saved_dlc_backup"));
             }
             try { disabledDlcs = DlcLoad.Read(game.DlcLoadPath).DisabledDlcs; }
-            catch (System.Text.Json.JsonException) { notes.Add("The existing dlc_load.json was unreadable; DLC settings were reset."); }
+            catch (System.Text.Json.JsonException) { notes.Add(Loc.T("core2.launch_dlc_unreadable")); }
         }
 
         var entries = DlcLoad.EntriesFor(playset, installed);
@@ -122,7 +123,7 @@ public sealed class LaunchService(GameInstall game, AppPaths paths, Func<bool>? 
 
     public Process? Launch(bool continueLastSave = false, bool withoutPlugins = false)
     {
-        if (Running) throw new ArtemisException("Stellaris is already running.");
+        if (Running) throw new ArtemisException(Loc.T("core2.launch_already_running"));
         return Process.Start(StartInfo(continueLastSave, withoutPlugins));
     }
 

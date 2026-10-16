@@ -205,6 +205,32 @@ def analyze(rep: Report, namer: Namer, thread: int, buckets: list[tuple[str, re.
     return out
 
 
+def prune(rep: Report, namer: Namer, rx: re.Pattern) -> Report:
+    """The report without every call (and everything under it) whose function name matches `rx`, as if that code had not run: the thread's samples
+    shrink by what was cut, so the shares are of the time that is left. Used to see what a change that removes a call would leave behind."""
+    gone: set[int] = set()
+    root_of: dict[int, int] = {}
+    cut: dict[int, int] = defaultdict(int)
+    cut_exe: dict[int, int] = defaultdict(int)
+    for idx in sorted(rep.nodes):  # a parent always has a lower index than its children
+        parent, fn, count = rep.nodes[idx]
+        top = parent if parent in rep.roots else root_of.get(parent, parent)
+        root_of[idx] = top
+        name, real = namer.label(fn)
+        if parent in gone or (real and rx.search(name)):
+            gone.add(idx)
+            cut[rep.roots[top]] += count
+            m = namer.module_of(fn)
+            if count and m and namer.exe and m[0] == namer.exe[0]:
+                cut_exe[rep.roots[top]] += count
+    out = Report(dict(rep.header), list(rep.modules), {i: dict(t) for i, t in rep.threads.items()}, dict(rep.roots),
+                 {i: v for i, v in rep.nodes.items() if i not in gone})
+    for t, n in cut.items():
+        out.threads[t]["samples"] -= n
+        out.threads[t]["in_exe"] -= cut_exe[t]
+    return out
+
+
 def tree(rep: Report, namer: Namer, thread: int, start: str | None, depth: int, min_pct: float, unnamed: bool) -> str:
     """The thread's call tree from the top (or from every function matching `start`), as the share of the thread's samples under each call. Code with
     no name is passed through (its children are shown in its place) unless `unnamed` is set."""
@@ -312,8 +338,11 @@ def main() -> int:
     ap.add_argument("--depth", type=int, default=8, help="with --tree: levels of named functions to show (default 8)")
     ap.add_argument("--min", type=float, default=1.0, dest="min_pct", help="with --tree: hide calls under this share of the thread's samples (default 1.0)")
     ap.add_argument("--unnamed", action="store_true", help="with --tree: show code that has no name too")
+    ap.add_argument("--without", metavar="REGEX", help="leave out every call to a function whose name matches (and all it calls), and show the shares of what is left")
     args = ap.parse_args()
     rep = parse(args.report.read_text(encoding="utf-8", errors="replace"))
+    if args.without:
+        rep = prune(rep, Namer(rep, args.names), re.compile(args.without))
     buckets = [(n, re.compile(rx)) for n, rx in DEFAULT_BUCKETS]
     for spec in args.bucket:
         name, _, rx = spec.partition("=")

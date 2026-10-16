@@ -15,6 +15,7 @@ using Artemis.Core.Logging;
 using Artemis.Core.Mods;
 using Artemis.Core.Playsets;
 using Artemis.Core.Plugins;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -90,10 +91,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>What to say in the Installed list when it shows no rows; empty when it shows some.</summary>
     public string InstalledEmptyText =>
-        IsScanning && Installed.Count == 0 ? "Scanning mods…"
+        IsScanning && Installed.Count == 0 ? Loc.T("vm.scanning_mods")
         : !_hasScanned ? ""
-        : Installed.Count == 0 ? "No mods found. Subscribe to mods on the Steam Workshop, or put them in the mod folder (the folder button, top right)."
-        : InstalledView.IsEmpty ? (InstalledSearch.Trim().Length > 0 ? $"No installed mods match \"{InstalledSearch.Trim()}\"." : "No installed mods match this filter.")
+        : Installed.Count == 0 ? Loc.T("vm.no_mods_found")
+        : InstalledView.IsEmpty ? (InstalledSearch.Trim().Length > 0 ? Loc.T("vm.no_mods_match_search", ("search", InstalledSearch.Trim())) : Loc.T("vm.no_mods_match_filter"))
         : "";
 
     public string SelectedPlaysetName => SelectedPlayset?.Name ?? "";
@@ -130,13 +131,13 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ResumeCommand))]
     private LastSave? _lastSave;
 
-    public string ResumeTip => LastSave is { } s ? $"Start the game and continue {s.Name}, {s.Date}" : "There is no save to continue yet";
+    public string ResumeTip => LastSave is { } s ? Loc.T("vm.resume_tip", ("name", s.Name), ("date", s.Date)) : Loc.T("vm.resume_none");
 
     [ObservableProperty] private bool _hasDrift;
     [ObservableProperty] private string _driftText = "";
 
-    public string InstalledCountText => IsScanning ? "scanning…" : Installed.Count.ToString();
-    public string LaunchText => GameRunning ? "Running" : "Launch";
+    public string InstalledCountText => IsScanning ? Loc.T("vm.scanning_short") : Installed.Count.ToString();
+    public string LaunchText => GameRunning ? Loc.T("vm.launch_running") : Loc.T("vm.launch");
     [ObservableProperty] private bool _libraryCollapsed;
     [ObservableProperty] private bool _hasMultiSelection;
     [ObservableProperty] private int _selectedInstalledCount;
@@ -210,10 +211,10 @@ public sealed partial class MainViewModel : ObservableObject
             : GameLocator.FindGameDir();
         if (gameDir is null)
         {
-            gameDir = _dialogs.PickFolder("Select your Stellaris folder (the one containing stellaris.exe)");
+            gameDir = _dialogs.PickFolder(Loc.T("vm.pick_stellaris_title"));
             if (gameDir is null || !File.Exists(Path.Combine(gameDir, "stellaris.exe")))
             {
-                Notify("Stellaris wasn't found. Restart Artemis to choose its folder.");
+                Notify(Loc.T("vm.stellaris_not_found"));
                 return;
             }
             _settings.GameDir = gameDir;
@@ -223,7 +224,7 @@ public sealed partial class MainViewModel : ObservableObject
         try { _game = GameInstall.Open(gameDir, _userDirOverride); }
         catch (Exception ex) when (ex is IOException or JsonException)
         {
-            ShowError($"Couldn't read the game's launcher settings: {ex.Message}", ex);
+            ShowError(Loc.T("vm.launcher_settings_error", ("message", ex.Message)), ex);
             return;
         }
         _launcher = new LaunchService(_game, _paths);
@@ -253,7 +254,7 @@ public sealed partial class MainViewModel : ObservableObject
         _ = RefreshPluginsAsync();
         // The window is up and the lists are filled; the index can take its time after that.
         _ = Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(async () => await UpdateIndexAsync()));
-        if (scan.Warnings.Count > 0) ShowError("Some mods couldn't be read:\n" + string.Join("\n", scan.Warnings.Take(5)));
+        if (scan.Warnings.Count > 0) ShowError(Loc.T("vm.mods_unreadable", ("list", string.Join("\n", scan.Warnings.Take(5)))));
     }
 
     /// <summary>
@@ -276,7 +277,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _indexAgain = false;
                 var mods = _installed.Values.ToList();
                 var game = _game;
-                var progress = new Progress<IndexProgress>(p => IndexStatus = p.Busy ? $"Indexing mods… {p.Done} of {p.Total}" : "");
+                var progress = new Progress<IndexProgress>(p => IndexStatus = p.Busy ? Loc.T("vm.indexing_progress", ("done", p.Done), ("total", p.Total)) : "");
                 Timing.Mark("index update begins");
                 var result = await Task.Run(() => _indexer.Update(mods, game, progress));
                 Timing.Mark($"index update done: {result.ModsIndexed} mods read, {result.ModsUnchanged} unchanged, game {(result.GameIndexed ? "read" : "cached")}");
@@ -292,7 +293,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException)
         {
             AppLog.Error("The mod index couldn't be updated", ex);
-            IndexStatus = "Couldn't update the mod index.";
+            IndexStatus = Loc.T("vm.index_failed");
         }
         finally
         {
@@ -311,12 +312,15 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var scan = await Task.Run(() => ModScanner.Scan(_game!.UserDir));
         // The game only sees a mod through a .mod file, so a mod folder that has none (at any depth) gets one, as Irony does (D55).
-        var adopted = await Task.Run(() => ModFolderHealth.CreateDescriptors(_game!.UserDir, ModFolderHealth.FindUnregistered(_game.UserDir, scan.Mods)));
+        // Likewise a Workshop item Steam has downloaded but the Launcher has not registered yet gets its ugc_ file (e.g. a mod subscribed to while Artemis is the only launcher used).
+        var workshop = Path.GetFullPath(Path.Combine(_game!.GameDir, "..", "..", "workshop", "content", "281990"));
+        var adopted = await Task.Run(() => ModFolderHealth.CreateDescriptors(_game.UserDir, ModFolderHealth.FindUnregistered(_game.UserDir, scan.Mods))
+            .Concat(ModFolderHealth.RegisterWorkshop(_game.UserDir, workshop, scan.Mods)).ToList());
         if (adopted.Count > 0)
         {
             scan = await Task.Run(() => ModScanner.Scan(_game!.UserDir));
             AppLog.Info($"Made .mod files for {adopted.Count} mod folders that had none: {string.Join(", ", adopted.Select(a => a.Key))}");
-            Notify(adopted.Count == 1 ? $"Found a mod folder with no .mod file and made one: {adopted[0].Name}." : $"Found {adopted.Count} mod folders with no .mod file and made them: {string.Join(", ", adopted.Take(3).Select(a => a.Name))}{(adopted.Count > 3 ? "…" : "")}.");
+            Notify(adopted.Count == 1 ? Loc.T("vm.adopted_one", ("name", adopted[0].Name)) : Loc.T("vm.adopted_many", ("count", adopted.Count), ("names", string.Join(", ", adopted.Take(3).Select(a => a.Name)) + (adopted.Count > 3 ? "…" : ""))));
         }
         _installed = scan.Mods.ToDictionary(m => m.Key, StringComparer.OrdinalIgnoreCase);
         if (_settings.SeenMods is null)
@@ -347,7 +351,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (_game is null) return;
         var scan = await ScanAsync();
         ShowPlayset();
-        Notify($"Found {scan.Mods.Count} mods.");
+        Notify(Loc.T("vm.found_mods", ("count", scan.Mods.Count)));
         _ = UpdateIndexAsync();
         _ = RefreshPluginsAsync();
     }
@@ -364,7 +368,7 @@ public sealed partial class MainViewModel : ObservableObject
             try
             {
                 if (File.Exists(game.DlcLoadPath) && DlcLoad.ToPlaysetMods(DlcLoad.Read(game.DlcLoadPath).EnabledMods) is { Count: > 0 } current)
-                    found.Add(new ExternalPlayset(CurrentListSource, "Current mod list", current));
+                    found.Add(new ExternalPlayset(CurrentListSource, Loc.T("vm.current_mod_list"), current));
             }
             catch (Exception ex) when (ex is IOException or JsonException) { }
             try { found.AddRange(PlaysetImporters.FromLauncher(PlaysetImporters.LauncherFile(game.UserDir))); }
@@ -383,11 +387,11 @@ public sealed partial class MainViewModel : ObservableObject
         var quiet = Environment.GetEnvironmentVariable("ARTEMIS_NO_WELCOME") == "1";
         var picked = found.Count == 0 ? null
             : quiet ? found.Where(p => p.Source == CurrentListSource).ToList()
-            : _dialogs.PickPlaysets("Welcome to Artemis",
-                $"Stellaris {GameVersion} was found with {installedCount} installed mods. Choose the playsets to start with; you can import more later from the playset menu. Nothing in your game changes until you press Launch.",
-                "Import", found, p => p.Source == CurrentListSource);
+            : _dialogs.PickPlaysets(Loc.T("vm.welcome_title"),
+                Loc.T("vm.welcome_body", ("version", GameVersion), ("count", installedCount)),
+                Loc.T("vm.import_button"), found, p => p.Source == CurrentListSource);
         if (picked is { Count: > 0 }) AddImported(picked);
-        if (Playsets.Count == 0) AddAndSelect(new Playset { Name = "My playset" });
+        if (Playsets.Count == 0) AddAndSelect(new Playset { Name = Loc.T("vm.first_playset_name") });
     }
 
     [RelayCommand]
@@ -397,10 +401,10 @@ public sealed partial class MainViewModel : ObservableObject
         var found = await FindImportableAsync();
         if (found.Count == 0)
         {
-            Notify("No playsets found to import.");
+            Notify(Loc.T("vm.no_playsets_to_import"));
             return;
         }
-        if (_dialogs.PickPlaysets("Import playsets", "Tick the playsets to copy into Artemis. The other tools' files are only read, never changed.", "Import", found, _ => false) is { Count: > 0 } picked)
+        if (_dialogs.PickPlaysets(Loc.T("vm.import_playsets_title"), Loc.T("vm.import_playsets_body"), Loc.T("vm.import_button"), found, _ => false) is { Count: > 0 } picked)
             AddImported(picked);
     }
 
@@ -410,8 +414,8 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var external in picked)
         {
             var name = external.Name;
-            if (Playsets.Any(p => p.Name == name)) name = $"{external.Name} ({external.Source})";
-            for (var n = 2; Playsets.Any(p => p.Name == name); n++) name = $"{external.Name} ({external.Source} {n})";
+            if (Playsets.Any(p => p.Name == name)) name = Loc.T("vm.imported_name", ("name", external.Name), ("source", external.Source));
+            for (var n = 2; Playsets.Any(p => p.Name == name); n++) name = Loc.T("vm.imported_name_n", ("name", external.Name), ("source", external.Source), ("n", n));
             var playset = new Playset { Name = name, Mods = external.Mods.Select(m => new PlaysetMod { Key = m.Key, Enabled = m.Enabled }).ToList() };
             Try(() => _store.Save(playset));
             Playsets.Add(playset);
@@ -607,7 +611,7 @@ public sealed partial class MainViewModel : ObservableObject
         PlaysetChanged();
         RefreshMembershipFilter();
         var mods = rows.Count(r => !r.IsSeparator);
-        if (mods > 0) Notify(mods == 1 ? "Removed 1 mod." : $"Removed {mods} mods.", undo: true);
+        if (mods > 0) Notify(mods == 1 ? Loc.T("vm.removed_one") : Loc.T("vm.removed_many", ("count", mods)), undo: true);
     }
 
     /// <summary>Moves a row to where mod number <paramref name="position"/> is now (clamped). Separators aren't counted.</summary>
@@ -699,12 +703,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void AddCustomSeparator(int index)
     {
-        if (_dialogs.Prompt("New separator", "") is { } name) AddSeparator(name, index);
+        if (_dialogs.Prompt(Loc.T("vm.new_separator_title"), "") is { } name) AddSeparator(name, index);
     }
 
     public void RenameSeparator(LoadOrderRowViewModel row)
     {
-        if (_dialogs.Prompt("Rename separator", row.Name) is not { } name) return;
+        if (_dialogs.Prompt(Loc.T("vm.rename_separator_title"), row.Name) is not { } name) return;
         row.RenameSeparator(name);
         PlaysetChanged();
     }
@@ -718,7 +722,7 @@ public sealed partial class MainViewModel : ObservableObject
         _matches = s.Length == 0 ? [] : LoadOrder.Where(r => r.Name.Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
         foreach (var m in _matches) m.IsMatch = true;
         _matchIndex = SelectedRow is null ? -1 : _matches.IndexOf(SelectedRow);
-        FindStatus = s.Length == 0 ? "" : _matches.Count == 0 ? "No match" : _matchIndex >= 0 ? $"{_matchIndex + 1} of {_matches.Count}" : $"{_matches.Count} found";
+        FindStatus = s.Length == 0 ? "" : _matches.Count == 0 ? Loc.T("vm.find_none") : _matchIndex >= 0 ? Loc.T("vm.find_position", ("index", _matchIndex + 1), ("count", _matches.Count)) : Loc.T("vm.find_count", ("count", _matches.Count));
     }
 
     private void GoToMatch(int index)
@@ -726,7 +730,7 @@ public sealed partial class MainViewModel : ObservableObject
         _matchIndex = index;
         RevealRow(_matches[index]);
         SelectedRow = _matches[index];
-        FindStatus = $"{index + 1} of {_matches.Count}";
+        FindStatus = Loc.T("vm.find_position", ("index", index + 1), ("count", _matches.Count));
     }
 
     [RelayCommand] private void FindNext() { if (_matches.Count > 0) GoToMatch((_matchIndex + 1) % _matches.Count); }
@@ -738,14 +742,14 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NewPlayset()
     {
-        if (_dialogs.Prompt("New playset", "New playset") is not { } name) return;
+        if (_dialogs.Prompt(Loc.T("vm.new_playset_title"), Loc.T("vm.new_playset_title")) is not { } name) return;
         AddAndSelect(new Playset { Name = name });
     }
 
     [RelayCommand]
     private void DuplicatePlayset()
     {
-        if (SelectedPlayset is { } p) AddAndSelect(p.Clone(p.Name + " (copy)"));
+        if (SelectedPlayset is { } p) AddAndSelect(p.Clone(Loc.T("vm.playset_copy_name", ("name", p.Name))));
     }
 
     [RelayCommand]
@@ -753,32 +757,32 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (SelectedPlayset is not { } p) return;
         var file = string.Concat(p.Name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        if (_dialogs.PickSaveFile("Export playset", file + ".json", "Playset (*.json)|*.json") is not { } path) return;
+        if (_dialogs.PickSaveFile(Loc.T("vm.export_playset_title"), file + ".json", "Playset (*.json)|*.json") is not { } path) return;
         Try(() =>
         {
             AtomicFile.WriteAllText(path, p.ToJson());
-            Notify($"Exported \"{p.Name}\".");
+            Notify(Loc.T("vm.exported", ("name", p.Name)));
         });
     }
 
     [RelayCommand]
     private void ImportPlaysetFile()
     {
-        if (_dialogs.PickOpenFile("Import playset", "Playset (*.json)|*.json") is not { } path) return;
+        if (_dialogs.PickOpenFile(Loc.T("vm.import_playset_title"), "Playset (*.json)|*.json") is not { } path) return;
         try
         {
             var playset = Playset.Import(File.ReadAllText(path));
             var name = playset.Name;
-            for (var n = 2; Playsets.Any(p => p.Name == name); n++) name = $"{playset.Name} ({n})";
+            for (var n = 2; Playsets.Any(p => p.Name == name); n++) name = Loc.T("vm.playset_dup_name", ("name", playset.Name), ("n", n));
             playset.Name = name;
             AddAndSelect(playset);
             var mods = playset.Mods.Where(m => !m.IsSeparator).ToList();
             var missing = mods.Count(m => !_installed.ContainsKey(m.Key));
-            Notify($"Imported \"{name}\": {mods.Count} mods" + (missing > 0 ? $", {missing} not installed." : "."));
+            Notify(missing > 0 ? Loc.T("vm.imported_missing", ("name", name), ("count", mods.Count), ("missing", missing)) : Loc.T("vm.imported_all", ("name", name), ("count", mods.Count)));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
-            ShowError($"That file isn't a playset Artemis can read: {ex.Message}", ex);
+            ShowError(Loc.T("vm.playset_unreadable", ("message", ex.Message)), ex);
         }
     }
 
@@ -792,7 +796,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void RenamePlayset()
     {
-        if (SelectedPlayset is not { } p || _dialogs.Prompt("Rename playset", p.Name) is not { } name) return;
+        if (SelectedPlayset is not { } p || _dialogs.Prompt(Loc.T("vm.rename_playset_title"), p.Name) is not { } name) return;
         p.Name = name;
         Try(() => _store.Save(p));
         OnPropertyChanged(nameof(SelectedPlaysetName));
@@ -801,10 +805,10 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void DeletePlayset()
     {
-        if (SelectedPlayset is not { } p || !_dialogs.Confirm($"Delete the playset \"{p.Name}\"? The mods themselves aren't touched.")) return;
+        if (SelectedPlayset is not { } p || !_dialogs.Confirm(Loc.T("vm.delete_playset_confirm", ("name", p.Name)))) return;
         Try(() => _store.Delete(p.Id));
         Playsets.Remove(p);
-        if (Playsets.Count == 0) Playsets.Add(new Playset { Name = "Default" });
+        if (Playsets.Count == 0) Playsets.Add(new Playset { Name = Loc.T("vm.default_playset_name") });
         SelectedPlayset = Playsets[0];
     }
 
@@ -841,9 +845,9 @@ public sealed partial class MainViewModel : ObservableObject
             var steam = await Task.Run(() => LaunchService.EnsureSteam(TimeSpan.FromSeconds(40)));
             if (!steam) AppLog.Warn("Steam did not start in time; starting the game anyway");
             _launcher.Launch(resume, withoutPlugins);
-            var skipped = result.SkippedMods > 0 ? $" ({result.SkippedMods} skipped: not installed)" : "";
+            var skipped = result.SkippedMods > 0 ? Loc.T("vm.launch_skipped", ("count", result.SkippedMods)) : "";
             AppLog.Info($"Started Stellaris{(resume ? " to continue the last save" : "")}{(withoutPlugins ? ", without plugins," : "")} with {result.EnabledMods} mods from the playset \"{p.Name}\"{skipped}");
-            Notify($"Launched with {result.EnabledMods} mods{skipped}" + (resume ? "; the game was asked to continue the last save." : ".") + (withoutPlugins ? " No plugins this time." : "") + (steam ? "" : " Steam didn't start, so the game may not count as played."));
+            Notify(Loc.T("vm.launched", ("count", result.EnabledMods), ("skipped", skipped)) + Loc.T(resume ? "vm.launched_end_resume" : "vm.launched_end") + (withoutPlugins ? Loc.T("vm.launched_no_plugins") : "") + (steam ? "" : Loc.T("vm.launched_no_steam")));
         }
         catch (Exception ex) when (ex is ArtemisException or IOException or UnauthorizedAccessException or Win32Exception)
         {
@@ -867,7 +871,7 @@ public sealed partial class MainViewModel : ObservableObject
             ExportPluginFiles(p);
             RepairOrionForLaunch();
             AppLog.Info($"Saved the playset \"{p.Name}\" ({result.EnabledMods} mods) to dlc_load.json without launching");
-            Notify($"Saved the load order ({result.EnabledMods} mods). Start the game from Steam or the Launcher.");
+            Notify(Loc.T("vm.saved_order", ("count", result.EnabledMods)));
         }
         catch (Exception ex) when (ex is ArtemisException or IOException or UnauthorizedAccessException) { ShowError(ex.Message, ex); }
     }
@@ -882,8 +886,8 @@ public sealed partial class MainViewModel : ObservableObject
             AppLog.Info(restored ? "Restored the original dlc_load.json" : "Restore asked for, but there is no saved original dlc_load.json");
             RememberGameList();
             Notify(restored
-                ? "Restored the original dlc_load.json."
-                : "There's no saved original to restore yet. Artemis saves one the first time you launch.");
+                ? Loc.T("vm.restored_original")
+                : Loc.T("vm.no_original"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowError(ex.Message, ex); }
     }
@@ -923,8 +927,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
         if (stamp == _settings.GameListStamp) return;
         AppLog.Info($"dlc_load.json was changed outside Artemis ({list.Count} mods)");
-        _drift = new ExternalPlayset(CurrentListSource, $"Game list, {DateTime.Now:d MMM HH:mm}", DlcLoad.ToPlaysetMods(list));
-        DriftText = $"The game's mod list ({list.Count} mods) was changed outside Artemis, probably by the Paradox Launcher or Irony. Launching from Artemis replaces it with this playset.";
+        _drift = new ExternalPlayset(CurrentListSource, Loc.T("vm.game_list_name", ("when", DateTime.Now.ToString("d MMM HH:mm"))), DlcLoad.ToPlaysetMods(list));
+        DriftText = Loc.T("vm.drift_text", ("count", list.Count));
         HasDrift = true;
     }
 
@@ -964,7 +968,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void Open(string target)
     {
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
-        catch (Exception ex) when (ex is Win32Exception or IOException) { ShowError($"Couldn't open {target}: {ex.Message}", ex); }
+        catch (Exception ex) when (ex is Win32Exception or IOException) { ShowError(Loc.T("vm.open_failed", ("target", target), ("message", ex.Message)), ex); }
     }
 
     private async void Notify(string text, bool undo = false)

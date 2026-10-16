@@ -5,6 +5,7 @@ using Artemis.Core.Game;
 using Artemis.Core.IO;
 using Artemis.Core.Launch;
 using Artemis.Core.Playsets;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Plugins;
 
@@ -83,10 +84,10 @@ public sealed partial class OrionInstaller(AppPaths paths, string payloadDir, Fu
     /// <summary>Installs, repairs or updates, whichever is due. Never replaces a winmm.dll that is not ours.</summary>
     public void Install(string gameDir)
     {
-        if ((isRunning ?? LaunchService.GameIsRunning)()) throw new ArtemisException("Stellaris is running. Close it before installing or removing Orion.");
-        if (!HasPayload) throw new ArtemisException("This copy of Artemis doesn't include Orion's files.");
+        if ((isRunning ?? LaunchService.GameIsRunning)()) throw new ArtemisException(Loc.T("core.orion_game_running"));
+        if (!HasPayload) throw new ArtemisException(Loc.T("core.orion_no_payload"));
         if (StubCheck.Find(gameDir) is { } foreign)
-            throw new ArtemisException($"The Stellaris folder already has a winmm.dll that Artemis didn't put there. Artemis won't replace it. Move it out of the folder first: {foreign.Path}");
+            throw new ArtemisException(Loc.T("core.orion_foreign_stub", ("path", foreign.Path)));
         try
         {
             var version = PayloadVersion;
@@ -96,18 +97,18 @@ public sealed partial class OrionInstaller(AppPaths paths, string payloadDir, Fu
             try { CopyOver(PayloadStub, Path.Combine(gameDir, StubName)); }
             catch (UnauthorizedAccessException ex)
             {
-                throw new ArtemisException("Windows won't let Artemis write to the Stellaris folder. If the game is installed under Program Files, run Artemis once as administrator to install Orion, or move the Steam library.", ex);
+                throw new ArtemisException(Loc.T("core.orion_access_denied"), ex);
             }
             PruneOldCores(version);
         }
-        catch (IOException ex) { throw new ArtemisException("Couldn't install Orion: " + ex.Message, ex); }
-        catch (UnauthorizedAccessException ex) { throw new ArtemisException("Couldn't install Orion: " + ex.Message, ex); }
+        catch (IOException ex) { throw new ArtemisException(Loc.T("core.orion_install_failed", ("reason", ex.Message)), ex); }
+        catch (UnauthorizedAccessException ex) { throw new ArtemisException(Loc.T("core.orion_install_failed", ("reason", ex.Message)), ex); }
     }
 
     /// <summary>Takes out the stub (only if it is ours), the pointer, the core and the plugin copies. Build data the user allowed is kept.</summary>
     public void Remove(string gameDir)
     {
-        if ((isRunning ?? LaunchService.GameIsRunning)()) throw new ArtemisException("Stellaris is running. Close it before installing or removing Orion.");
+        if ((isRunning ?? LaunchService.GameIsRunning)()) throw new ArtemisException(Loc.T("core.orion_game_running"));
         try
         {
             if (StubCheck.IsInstalled(gameDir)) File.Delete(Path.Combine(gameDir, StubName));
@@ -116,7 +117,7 @@ public sealed partial class OrionInstaller(AppPaths paths, string payloadDir, Fu
             var cache = Path.Combine(paths.OrionDir, "cache");
             if (Directory.Exists(cache)) Directory.Delete(cache, recursive: true);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { throw new ArtemisException("Couldn't remove Orion: " + ex.Message, ex); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { throw new ArtemisException(Loc.T("core.orion_remove_failed", ("reason", ex.Message)), ex); }
     }
 
     private void PruneOldCores(string? keep)
@@ -162,7 +163,7 @@ public sealed partial class OrionBuilds(AppPaths paths)
     [GeneratedRegex("^[0-9a-f]{8}-[0-9a-f]{1,8}$")]
     private static partial Regex IdPattern();
 
-    private string FileFor(string id) => IdPattern().IsMatch(id) ? Path.Combine(paths.OrionBuildsDir, id + ".json") : throw new ArtemisException("That isn't a game build id.");
+    private string FileFor(string id) => IdPattern().IsMatch(id) ? Path.Combine(paths.OrionBuildsDir, id + ".json") : throw new ArtemisException(Loc.T("core.orion_bad_build_id"));
 
     public BuildSupport Check(string id)
     {
@@ -179,7 +180,7 @@ public sealed partial class OrionBuilds(AppPaths paths)
     /// <summary>Writes the user's permission for this exact build. A file that already counts as verified is left as it is.</summary>
     public void Allow(string id, string gameVersion)
     {
-        if (string.IsNullOrWhiteSpace(gameVersion)) throw new ArtemisException("Artemis doesn't know which version of Stellaris this is, so it can't allow plugins on it.");
+        if (string.IsNullOrWhiteSpace(gameVersion)) throw new ArtemisException(Loc.T("core.orion_unknown_version"));
         if (Check(id) == BuildSupport.Verified) return;
         AtomicFile.WriteAllText(FileFor(id), JsonSerializer.Serialize(new { build = id, game = gameVersion, source = "user", addresses = new { } }));
     }

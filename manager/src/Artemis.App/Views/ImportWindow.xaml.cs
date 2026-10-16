@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using Artemis.Core.Playsets;
+using Artemis.Core.Text;
 
 namespace Artemis.App.Views;
 
@@ -12,7 +13,7 @@ public partial class ImportWindow : Window
         public ExternalPlayset Playset { get; } = playset;
         public bool IsChecked { get; set; } = isChecked;
         public string Title => Playset.Name;
-        public string Detail => $"{Playset.Source} · {Playset.Mods.Count} {(Playset.Mods.Count == 1 ? "mod" : "mods")}";
+        public string Detail => Loc.T(Playset.Mods.Count == 1 ? "win.import_detail_one" : "win.import_detail_many", ("source", Playset.Source), ("count", Playset.Mods.Count));
     }
 
     private readonly List<Choice> _choices;

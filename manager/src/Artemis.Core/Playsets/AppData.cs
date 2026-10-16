@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Artemis.Core.IO;
@@ -114,7 +115,7 @@ public sealed partial class PlaysetStore(AppPaths paths)
 
     public void Save(Playset playset)
     {
-        if (!SafeId().IsMatch(playset.Id)) throw new ArtemisException("That playset has an invalid id.");
+        if (!SafeId().IsMatch(playset.Id)) throw new ArtemisException(Loc.T("core2.playset_invalid_id"));
         AtomicFile.WriteAllText(FileFor(playset.Id), playset.ToJson());
     }
 

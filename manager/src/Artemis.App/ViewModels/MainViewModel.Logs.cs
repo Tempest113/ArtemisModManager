@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using Artemis.Core.Game;
 using Artemis.Core.IO;
 using Artemis.Core.Logging;
+using Artemis.Core.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -112,7 +113,7 @@ public sealed partial class MainViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            var message = $"Couldn't read this log: {ex.Message}";
+            var message = Loc.T("plug.log_read_error", ("error", ex.Message));
             if (message != _logError) LogChanged?.Invoke(new LogChange(message, Replace: true));
             _logError = message;
             if (SelectedLog is { } log) _tail = new LogTail(log.Path, joinEntries: log.Path != AppLog.Path); // read it whole once it can be read again
@@ -144,7 +145,7 @@ public sealed partial class MainViewModel
             else LogFiles.Insert(i, files[i]);
         }
         while (LogFiles.Count > files.Count) LogFiles.RemoveAt(LogFiles.Count - 1);
-        LogsEmptyText = files.Count == 0 ? "No logs yet." : "";
+        LogsEmptyText = files.Count == 0 ? Loc.T("plug.logs_empty") : "";
         if (SelectedLog is null || !files.Contains(SelectedLog)) SelectedLog = files.FirstOrDefault(f => f.Name == "error.log") ?? files.FirstOrDefault();
     }
 
@@ -164,12 +165,12 @@ public sealed partial class MainViewModel
         var userDir = _game.UserDir;
         var plugins = _installed.Values.Where(m => m.Plugin is not null).Select(m => m.Key).ToList();
         var stale = LogCleanup.Find(userDir, plugins);
-        if (stale.Count == 0) { Notify("Nothing to clean up: every log is from the game's latest run, or belongs to an installed plugin."); return; }
-        var list = string.Join("\n", stale.Take(20).Select(s => $"   {Path.GetRelativePath(userDir, s.File)}   ({s.Bytes / 1024:N0} KB): {s.Reason}")) + (stale.Count > 20 ? $"\n   … and {stale.Count - 20} more" : "");
-        if (!_dialogs.Confirm($"These logs are no longer needed:\n\n{list}\n\nSend them to the Recycle Bin? The game's latest logs, Orion's own log, Artemis's log and the logs of installed plugins stay where they are.", "Recycle")) return;
+        if (stale.Count == 0) { Notify(Loc.T("plug.logs_nothing_to_clean")); return; }
+        var list = string.Join("\n", stale.Take(20).Select(s => $"   {Path.GetRelativePath(userDir, s.File)}   ({s.Bytes / 1024:N0} KB): {s.Reason}")) + (stale.Count > 20 ? Loc.T("plug.list_more", ("count", stale.Count - 20)) : "");
+        if (!_dialogs.Confirm(Loc.T("plug.logs_confirm", ("list", list)), Loc.T("plug.recycle"))) return;
         var removed = await Task.Run(() => LogCleanup.Recycle(userDir, plugins, stale, RecycleBin.Send));
         AppLog.Info($"Sent {removed} of {stale.Count} old logs to the Recycle Bin: {string.Join(", ", stale.Take(10).Select(s => Path.GetFileName(s.File)))}");
         ListLogs();
-        Notify(removed == stale.Count ? $"Sent {removed} old log{(removed == 1 ? "" : "s")} to the Recycle Bin." : $"Sent {removed} of {stale.Count} old logs to the Recycle Bin; the rest changed or are in use, so they stayed.");
+        Notify(removed == stale.Count ? Loc.T(removed == 1 ? "plug.logs_sent_one" : "plug.logs_sent_many", ("count", removed)) : Loc.T("plug.logs_sent_partial", ("count", removed), ("total", stale.Count)));
     }
 }

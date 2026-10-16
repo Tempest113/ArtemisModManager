@@ -1,4 +1,5 @@
 using Artemis.Core.Conflicts;
+using Artemis.Core.Text;
 
 namespace Artemis.App.ViewModels;
 
@@ -8,7 +9,7 @@ public sealed class ConflictEntryViewModel(ConflictEntry entry, bool winner)
     public string Name => entry.SourceName;
     public bool IsWinner => winner;
     public bool IsGame => entry.IsGame;
-    public string State => winner ? "Used" : "Overridden";
+    public string State => winner ? Loc.T("vm.conflict_used") : Loc.T("vm.conflict_overridden");
     public string Location => entry.Line > 0 ? $"{entry.Path}:{entry.Line}" : entry.Path;
 }
 
@@ -18,14 +19,14 @@ public sealed class ConflictRowViewModel(Conflict conflict)
     public Conflict Conflict => conflict;
     public string Name => conflict.Name;
     public string Domain => conflict.Domain;
-    public string KindText => conflict.Kind switch { ConflictKind.File => "File", ConflictKind.Definition => "Definition", _ => "Text" };
+    public string KindText => conflict.Kind switch { ConflictKind.File => Loc.T("vm.kind_file"), ConflictKind.Definition => Loc.T("vm.kind_definition"), _ => Loc.T("vm.kind_text") };
     public string Why => conflict.Why;
 
     public string WhyHeading => conflict.Kind switch
     {
-        ConflictKind.File => "Why this file takes priority",
-        ConflictKind.Definition => "Why this definition takes priority",
-        _ => "Why this text takes priority",
+        ConflictKind.File => Loc.T("vm.why_file"),
+        ConflictKind.Definition => Loc.T("vm.why_definition"),
+        _ => Loc.T("vm.why_text"),
     };
     public bool Intended => conflict.Intended;
 
@@ -38,8 +39,8 @@ public sealed class ConflictRowViewModel(Conflict conflict)
         get
         {
             var beaten = conflict.Entries.Where((_, i) => i != conflict.Winner).Select(e => e.SourceName).ToList();
-            var names = beaten.Count <= 2 ? string.Join(" and ", beaten) : $"{beaten[0]}, {beaten[1]} and {beaten.Count - 2} more";
-            return $"{conflict.Domain} · {conflict.WinnerEntry.SourceName} over {names}";
+            var names = beaten.Count <= 2 ? string.Join(Loc.T("vm.conflict_names_and"), beaten) : Loc.T("vm.conflict_names_more", ("first", beaten[0]), ("second", beaten[1]), ("count", beaten.Count - 2));
+            return Loc.T("vm.conflict_summary", ("domain", conflict.Domain), ("winner", conflict.WinnerEntry.SourceName), ("names", names));
         }
     }
 

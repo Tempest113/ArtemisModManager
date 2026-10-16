@@ -8,6 +8,7 @@ using System.Windows.Media;
 using Artemis.App.ViewModels;
 using Artemis.Core.Game;
 using Artemis.Core.Playsets;
+using Artemis.Core.Text;
 
 namespace Artemis.App;
 
@@ -131,7 +132,7 @@ public partial class MainWindow : Window
     {
         var maximized = WindowState == WindowState.Maximized;
         MaxGlyph.Text = (string)FindResource(maximized ? "IcoRestore" : "IcoMax");
-        System.Windows.Automation.AutomationProperties.SetName(MaxButton, maximized ? "Restore" : "Maximize");
+        System.Windows.Automation.AutomationProperties.SetName(MaxButton, maximized ? Loc.T("win.restore_window") : Loc.T("win.maximize_window"));
     }
 
     // A borderless window maximises over the taskbar unless it is told the usable area of the monitor it is on.
@@ -222,14 +223,14 @@ public partial class MainWindow : Window
             menu.Items.Add(item);
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("New playset…", "IcoAdd", () => _vm.NewPlaysetCommand.Execute(null)));
-        menu.Items.Add(Item("Duplicate", "IcoLink", () => _vm.DuplicatePlaysetCommand.Execute(null)));
-        menu.Items.Add(Item("Rename…", "IcoEdit", () => _vm.RenamePlaysetCommand.Execute(null)));
-        menu.Items.Add(Item("Delete…", "IcoDelete", () => _vm.DeletePlaysetCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.new_playset"), "IcoAdd", () => _vm.NewPlaysetCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.duplicate_playset"), "IcoLink", () => _vm.DuplicatePlaysetCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.rename"), "IcoEdit", () => _vm.RenamePlaysetCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.delete_playset"), "IcoDelete", () => _vm.DeletePlaysetCommand.Execute(null)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("Import from other tools…", "IcoFolder", () => _vm.ImportPlaysetsCommand.Execute(null)));
-        menu.Items.Add(Item("Import from a file…", "IcoFolder", () => _vm.ImportPlaysetFileCommand.Execute(null)));
-        menu.Items.Add(Item("Export to a file…", "IcoSave", () => _vm.ExportPlaysetCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.import_other_tools"), "IcoFolder", () => _vm.ImportPlaysetsCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.import_file"), "IcoFolder", () => _vm.ImportPlaysetFileCommand.Execute(null)));
+        menu.Items.Add(Item(Loc.T("win.export_file"), "IcoSave", () => _vm.ExportPlaysetCommand.Execute(null)));
         Show(menu, PlaysetButton);
     }
 
@@ -238,9 +239,9 @@ public partial class MainWindow : Window
         {
             Items =
             {
-                Item("Create a mod…", "IcoAdd", () => _vm.CreateModCommand.Execute(null)),
-                Item("Install from an archive…", "IcoFolder", () => _vm.InstallFromArchiveCommand.Execute(null)),
-                Item("Clear leftover .mod files…", "IcoFolder", () => _vm.ReviewLeftoverModsCommand.Execute(null)),
+                Item(Loc.T("win.create_mod"), "IcoAdd", () => _vm.CreateModCommand.Execute(null)),
+                Item(Loc.T("win.install_archive"), "IcoFolder", () => _vm.InstallFromArchiveCommand.Execute(null)),
+                Item(Loc.T("win.clear_leftover"), "IcoFolder", () => _vm.ReviewLeftoverModsCommand.Execute(null)),
             },
         }, AddModButton);
 
@@ -249,9 +250,9 @@ public partial class MainWindow : Window
         {
             Items =
             {
-                Item("Launch without plugins (this time)", "IcoPlay", () => _vm.LaunchWithoutPluginsCommand.Execute(null), enabled: !_vm.GameRunning),
-                Item("Save the load order without launching", "IcoSave", () => _vm.ApplyOnlyCommand.Execute(null)),
-                Item("Restore the original dlc_load.json", "IcoUndo", () => _vm.RestoreOriginalCommand.Execute(null)),
+                Item(Loc.T("win.launch_no_plugins"), "IcoPlay", () => _vm.LaunchWithoutPluginsCommand.Execute(null), enabled: !_vm.GameRunning),
+                Item(Loc.T("win.save_order"), "IcoSave", () => _vm.ApplyOnlyCommand.Execute(null)),
+                Item(Loc.T("win.restore_original"), "IcoUndo", () => _vm.RestoreOriginalCommand.Execute(null)),
             },
         }, LaunchMenuButton);
 
@@ -262,7 +263,7 @@ public partial class MainWindow : Window
     {
         foreach (var name in SeparatorPresets) yield return Item(name, null, () => _vm.AddSeparator(name, index));
         yield return new Separator();
-        yield return Item("Custom…", "IcoEdit", () => _vm.AddCustomSeparator(index));
+        yield return Item(Loc.T("win.separator_custom"), "IcoEdit", () => _vm.AddCustomSeparator(index));
     }
 
     private void AddSeparator_Click(object sender, RoutedEventArgs e)
@@ -285,23 +286,23 @@ public partial class MainWindow : Window
         MenuItem Label(string text) => new() { Header = text, IsEnabled = false, FontSize = 11.5 };
 
         var menu = new ContextMenu();
-        menu.Items.Add(Label("Show"));
+        menu.Items.Add(Label(Loc.T("win.filter_show")));
         foreach (var (filter, text) in new[]
         {
-            (InstalledFilter.All, "All mods"),
-            (InstalledFilter.NotInPlayset, "Not in this playset"),
-            (InstalledFilter.InPlayset, "In this playset"),
-            (InstalledFilter.Outdated, "Made for an older game version"),
-            (InstalledFilter.Missing, "With missing files"),
-            (InstalledFilter.NewOrUpdated, "New or updated since my last launch"),
-            (InstalledFilter.WithConflicts, "With conflicts with other mods"),
-            (InstalledFilter.WithPlugin, "With a plugin"),
+            (InstalledFilter.All, Loc.T("win.filter_all")),
+            (InstalledFilter.NotInPlayset, Loc.T("win.filter_not_in_playset")),
+            (InstalledFilter.InPlayset, Loc.T("win.filter_in_playset")),
+            (InstalledFilter.Outdated, Loc.T("win.filter_outdated")),
+            (InstalledFilter.Missing, Loc.T("win.filter_missing")),
+            (InstalledFilter.NewOrUpdated, Loc.T("win.filter_new")),
+            (InstalledFilter.WithConflicts, Loc.T("win.filter_conflicts")),
+            (InstalledFilter.WithPlugin, Loc.T("win.filter_plugin")),
         })
             menu.Items.Add(Choice(text, _vm.Filter == filter, () => _vm.Filter = filter));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Label("Sort by"));
-        menu.Items.Add(Choice("Name", _vm.Sort == InstalledSort.Name, () => _vm.Sort = InstalledSort.Name));
-        menu.Items.Add(Choice("Recently added", _vm.Sort == InstalledSort.Newest, () => _vm.Sort = InstalledSort.Newest));
+        menu.Items.Add(Label(Loc.T("win.sort_by")));
+        menu.Items.Add(Choice(Loc.T("win.sort_name"), _vm.Sort == InstalledSort.Name, () => _vm.Sort = InstalledSort.Name));
+        menu.Items.Add(Choice(Loc.T("win.sort_recent"), _vm.Sort == InstalledSort.Newest, () => _vm.Sort = InstalledSort.Newest));
         Show(menu, FilterButton);
     }
 
@@ -323,17 +324,17 @@ public partial class MainWindow : Window
         var single = rows.Count == 1 ? rows[0] : null;
 
         var menu = new ContextMenu();
-        menu.Items.Add(Item("Show details", "IcoInfo", () => { _vm.FollowSelection(rows[0]); _vm.DetailsOpen = true; }));
+        menu.Items.Add(Item(Loc.T("win.show_details"), "IcoInfo", () => { _vm.FollowSelection(rows[0]); _vm.DetailsOpen = true; }));
         menu.Items.Add(new Separator());
         var allIn = rows.All(r => r.InPlayset);
         menu.Items.Add(allIn
-            ? Item("Remove from playset", "IcoClose", () => { foreach (var r in rows.ToList()) r.InPlayset = false; })
-            : Item("Add to playset", "IcoAdd", () => { foreach (var r in rows.ToList()) r.InPlayset = true; }));
+            ? Item(Loc.T("win.remove_from_playset"), "IcoClose", () => { foreach (var r in rows.ToList()) r.InPlayset = false; })
+            : Item(Loc.T("win.add_to_playset"), "IcoAdd", () => { foreach (var r in rows.ToList()) r.InPlayset = true; }));
         if (single?.Mod is { } mod)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item("Open folder", "IcoFolder", () => _vm.OpenFolderOf(mod), enabled: mod.ContentDir is not null));
-            if (mod.RemoteFileId is { Length: > 0 }) menu.Items.Add(Item("Open on the Workshop", "IcoLink", () => _vm.OpenOnWorkshop(mod)));
+            menu.Items.Add(Item(Loc.T("win.open_folder"), "IcoFolder", () => _vm.OpenFolderOf(mod), enabled: mod.ContentDir is not null));
+            if (mod.RemoteFileId is { Length: > 0 }) menu.Items.Add(Item(Loc.T("win.open_workshop"), "IcoLink", () => _vm.OpenOnWorkshop(mod)));
         }
         item.ContextMenu = menu;
     }
@@ -376,30 +377,30 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         if (rows is [{ IsSeparator: true } separator])
         {
-            menu.Items.Add(Item(separator.IsCollapsed ? "Show the mods of this group" : "Fold this group away", separator.IsCollapsed ? "IcoChevDown" : "IcoChevRight", () => { _vm.ToggleGroup(separator); DeselectHidden(); }));
-            menu.Items.Add(Item("Fold all groups away", "IcoChevRight", () => { _vm.SetAllGroups(true); DeselectHidden(); }));
-            menu.Items.Add(Item("Show all groups", "IcoChevDown", () => _vm.SetAllGroups(false)));
+            menu.Items.Add(Item(separator.IsCollapsed ? Loc.T("win.group_show") : Loc.T("win.group_fold"), separator.IsCollapsed ? "IcoChevDown" : "IcoChevRight", () => { _vm.ToggleGroup(separator); DeselectHidden(); }));
+            menu.Items.Add(Item(Loc.T("win.groups_fold_all"), "IcoChevRight", () => { _vm.SetAllGroups(true); DeselectHidden(); }));
+            menu.Items.Add(Item(Loc.T("win.groups_show_all"), "IcoChevDown", () => _vm.SetAllGroups(false)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item("Rename…", "IcoEdit", () => _vm.RenameSeparator(separator)));
-            menu.Items.Add(Item("Remove separator", "IcoClose", () => _vm.RemoveRows(rows)));
+            menu.Items.Add(Item(Loc.T("win.rename"), "IcoEdit", () => _vm.RenameSeparator(separator)));
+            menu.Items.Add(Item(Loc.T("win.remove_separator"), "IcoClose", () => _vm.RemoveRows(rows)));
             item.ContextMenu = menu;
             return;
         }
 
-        if (rows is [{ } first]) menu.Items.Add(Item("Show details", "IcoInfo", () => { _vm.FollowSelection(first); _vm.DetailsOpen = true; }));
-        menu.Items.Add(Item("Move to top", "IcoUp", () => _vm.MoveRows(rows, 0)));
-        menu.Items.Add(Item("Move to bottom", "IcoDown", () => _vm.MoveRows(rows, int.MaxValue)));
+        if (rows is [{ } first]) menu.Items.Add(Item(Loc.T("win.show_details"), "IcoInfo", () => { _vm.FollowSelection(first); _vm.DetailsOpen = true; }));
+        menu.Items.Add(Item(Loc.T("win.move_top"), "IcoUp", () => _vm.MoveRows(rows, 0)));
+        menu.Items.Add(Item(Loc.T("win.move_bottom"), "IcoDown", () => _vm.MoveRows(rows, int.MaxValue)));
         menu.Items.Add(new Separator());
-        var above = new MenuItem { Header = "Add separator above", Tag = Glyph("IcoAdd") };
+        var above = new MenuItem { Header = Loc.T("win.add_separator_above"), Tag = Glyph("IcoAdd") };
         foreach (var c in SeparatorItems(_vm.LoadOrder.IndexOf(rows[0]))) above.Items.Add(c);
         menu.Items.Add(above);
         if (rows is [{ Mod: { } mod }])
         {
-            menu.Items.Add(Item("Open folder", "IcoFolder", () => _vm.OpenFolderOf(mod), enabled: mod.ContentDir is not null));
-            if (mod.RemoteFileId is { Length: > 0 }) menu.Items.Add(Item("Open on the Workshop", "IcoLink", () => _vm.OpenOnWorkshop(mod)));
+            menu.Items.Add(Item(Loc.T("win.open_folder"), "IcoFolder", () => _vm.OpenFolderOf(mod), enabled: mod.ContentDir is not null));
+            if (mod.RemoteFileId is { Length: > 0 }) menu.Items.Add(Item(Loc.T("win.open_workshop"), "IcoLink", () => _vm.OpenOnWorkshop(mod)));
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("Remove from playset", "IcoClose", () => _vm.RemoveRows(rows)));
+        menu.Items.Add(Item(Loc.T("win.remove_from_playset"), "IcoClose", () => _vm.RemoveRows(rows)));
         item.ContextMenu = menu;
     }
 

@@ -1,4 +1,5 @@
 using Artemis.Core.Index;
+using Artemis.Core.Text;
 
 namespace Artemis.Core.Achievements;
 
@@ -85,16 +86,16 @@ public static class AchievementCheck
     {
         var reasons = new List<string>();
         if (coveredFiles is { Count: > 0 })
-            reasons.Add($"adds or changes {coveredFiles.Count:N0} file{(coveredFiles.Count == 1 ? "" : "s")} the game's checksum covers, such as {coveredFiles[0]}");
-        if (pluginCounts) reasons.Add("its plugin counts toward the game's checksum while it is switched on");
+            reasons.Add(Loc.T(coveredFiles.Count == 1 ? "core.achv_files_one" : "core.achv_files_many", ("count", coveredFiles.Count.ToString("N0")), ("example", coveredFiles[0])));
+        if (pluginCounts) reasons.Add(Loc.T("core.achv_plugin_counts"));
         if (reasons.Count > 0)
         {
             var text = string.Join(", and ", reasons);
-            return new AchievementVerdict(AchievementState.Off, char.ToUpper(text[0]) + text[1..] + ". Achievements turn off.");
+            return new AchievementVerdict(AchievementState.Off, Loc.T("core.achv_off", ("reasons", char.ToUpper(text[0]) + text[1..])));
         }
         return coveredFiles is null
             ? new AchievementVerdict(AchievementState.Unknown, "")
-            : new AchievementVerdict(AchievementState.On, "Adds or changes no file the game's checksum covers, so achievements stay on.");
+            : new AchievementVerdict(AchievementState.On, Loc.T("core.achv_on"));
     }
 }
 

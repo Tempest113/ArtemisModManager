@@ -1,3 +1,4 @@
+using Artemis.Core.Text;
 namespace Artemis.Core.Mods;
 
 /// <summary>One mod a descriptor lists, and where it stands relative to this mod.</summary>
@@ -22,15 +23,15 @@ public static class DependencyCheck
         foreach (var name in mod.Dependencies)
         {
             if (!installedByName.TryGetValue(name, out var listed))
-                result.Add(new DependencyStatus(name, "Not installed", Ok: true));
+                result.Add(new DependencyStatus(name, Loc.T("core.dep_not_installed"), Ok: true));
             else if (!inPlayset.TryGetValue(listed.Key, out var slot))
-                result.Add(new DependencyStatus(name, "Not in this playset", Ok: true));
+                result.Add(new DependencyStatus(name, Loc.T("core.dep_not_in_playset"), Ok: true));
             else if (!slot.Enabled)
-                result.Add(new DependencyStatus(name, "Switched off", Ok: true));
+                result.Add(new DependencyStatus(name, Loc.T("core.dep_switched_off"), Ok: true));
             else if (position >= 0 && slot.Index > position)
-                result.Add(new DependencyStatus(name, "Loads below this mod; the descriptor asks for it above", Ok: false));
+                result.Add(new DependencyStatus(name, Loc.T("core.dep_loads_below"), Ok: false));
             else
-                result.Add(new DependencyStatus(name, "In this playset", Ok: true));
+                result.Add(new DependencyStatus(name, Loc.T("core.dep_in_playset"), Ok: true));
         }
         return result;
     }
