@@ -26,6 +26,12 @@
     <Content Include="..\Artemis.Core\Text\en.loc" Link="loc\en.loc" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Licence files ship next to the exe (third-party notices are required by the bundled libraries). -->
+  <ItemGroup>
+    <Content Include="..\..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Orion's files, built by orion/build.bat, travel with the app so it can install them. Absent until that script has run; -p:IncludeOrion=false leaves them out (a build without the in-game loader). -->
   <ItemGroup Condition="'$(IncludeOrion)' != 'false' And Exists('../../../orion/build/winmm.dll') And Exists('../../../orion/build/orion.dll')">
     <Content Include="../../../orion/build/winmm.dll" Link="orion/winmm.dll" CopyToOutputDirectory="PreserveNewest" />

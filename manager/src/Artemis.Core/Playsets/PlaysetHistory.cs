@@ -5,7 +5,7 @@ public sealed class PlaysetHistory
 {
     private const int Limit = 100;
 
-    private readonly record struct Line(string Key, bool Enabled, string? Separator);
+    private readonly record struct Line(string Key, bool Enabled, string? Separator, bool PluginOff, bool Collapsed);
 
     private readonly List<Line[]> _undo = [];
     private readonly List<Line[]> _redo = [];
@@ -44,10 +44,10 @@ public sealed class PlaysetHistory
         _current = from[^1];
         from.RemoveAt(from.Count - 1);
         playset.Mods.Clear();
-        playset.Mods.AddRange(_current.Select(l => new PlaysetMod { Key = l.Key, Enabled = l.Enabled, Separator = l.Separator }));
+        playset.Mods.AddRange(_current.Select(l => new PlaysetMod { Key = l.Key, Enabled = l.Enabled, Separator = l.Separator, PluginOff = l.PluginOff, Collapsed = l.Collapsed }));
         return true;
     }
 
     private static Line[] Snapshot(Playset playset) =>
-        playset.Mods.Select(m => new Line(m.Key, m.Enabled, m.Separator)).ToArray();
+        playset.Mods.Select(m => new Line(m.Key, m.Enabled, m.Separator, m.PluginOff, m.Collapsed)).ToArray();
 }

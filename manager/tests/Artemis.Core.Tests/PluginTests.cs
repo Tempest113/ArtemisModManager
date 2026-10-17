@@ -72,6 +72,26 @@ public class PluginManifestTests
         Assert.Contains(mentions, info.Error, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("int", "\"min\": 1, \"max\": 10", 1L)]       // no default: 0 is outside the range, so the nearest end of it
+    [InlineData("int", "\"min\": -10, \"max\": -2", -2L)]
+    [InlineData("int", "\"min\": -5, \"max\": 5", 0L)]       // 0 is inside: unchanged
+    [InlineData("int", "", 0L)]
+    public void A_number_setting_with_a_range_and_no_default_starts_inside_the_range(string type, string range, long expected)
+    {
+        var info = PluginManifestReader.Parse($$"""{ "id": "a", "version": "1", "apiVersion": 1, "files": ["x.dll"], "settings": [ { "id": "s", "type": "{{type}}"{{(range.Length > 0 ? ", " + range : "")}} } ] }""");
+        Assert.True(info.Manifest is not null, info.Error);
+        Assert.Equal(expected, Assert.IsType<long>(info.Manifest!.Settings[0].Default));
+    }
+
+    [Fact]
+    public void A_float_setting_with_a_minimum_and_no_default_starts_at_the_minimum()
+    {
+        var info = PluginManifestReader.Parse("""{ "id": "a", "version": "1", "apiVersion": 1, "files": ["x.dll"], "settings": [ { "id": "s", "type": "float", "min": 0.5, "max": 4 } ] }""");
+        Assert.True(info.Manifest is not null, info.Error);
+        Assert.Equal(0.5, Assert.IsType<double>(info.Manifest!.Settings[0].Default));
+    }
+
     [Fact]
     public void The_scanner_attaches_the_plugin_part_to_a_mod_that_has_one()
     {
@@ -326,6 +346,39 @@ public class InstallerTests
         ModInstaller.Install(v2, user, replace: true);
         Assert.False(File.Exists(Path.Combine(user, "mod", "Fleet Trails", "common", "old.txt")));
         Assert.True(File.Exists(Path.Combine(user, "mod", "Fleet Trails", "common", "new.txt")));
+    }
+
+    [Fact]
+    public void A_replace_that_fails_part_way_leaves_the_installed_mod_as_it_was()
+    {
+        using var t = new TempDir();
+        var user = t.Dir("user");
+        ModInstaller.Install(MakeZip(t, "v1.zip", ("descriptor.mod", Descriptor), ("common/old.txt", "v1")), user);
+
+        // "a" is a file, then "a/b" needs "a" to be a folder: unpacking fails after it has started.
+        var broken = MakeZip(t, "broken.zip", ("descriptor.mod", Descriptor), ("common/new.txt", "v2"), ("a", "file"), ("a/b", "clash"));
+        Assert.ThrowsAny<IOException>(() => ModInstaller.Install(broken, user, replace: true));
+
+        var mod = Path.Combine(user, "mod");
+        Assert.Equal("v1", File.ReadAllText(Path.Combine(mod, "Fleet Trails", "common", "old.txt")));
+        Assert.False(File.Exists(Path.Combine(mod, "Fleet Trails", "common", "new.txt")));
+        Assert.Contains("path=\"mod/Fleet Trails\"", File.ReadAllText(Path.Combine(mod, "Fleet Trails.mod")));
+        Assert.Single(ModScanner.Scan(user).Mods);
+        Assert.False(Directory.Exists(Path.Combine(user, "artemis-staging")), "the holding folder must not be left behind");
+    }
+
+    [Fact]
+    public void A_replace_that_works_leaves_only_the_new_mod_and_no_holding_folder()
+    {
+        using var t = new TempDir();
+        var user = t.Dir("user");
+        ModInstaller.Install(MakeZip(t, "v1.zip", ("descriptor.mod", Descriptor), ("common/old.txt", "v1")), user);
+        ModInstaller.Install(MakeZip(t, "v2.zip", ("descriptor.mod", Descriptor), ("common/new.txt", "v2")), user, replace: true);
+
+        Assert.True(File.Exists(Path.Combine(user, "mod", "Fleet Trails", "common", "new.txt")));
+        Assert.False(File.Exists(Path.Combine(user, "mod", "Fleet Trails", "common", "old.txt")));
+        Assert.Single(Directory.GetFiles(Path.Combine(user, "mod"), "*.mod"));
+        Assert.False(Directory.Exists(Path.Combine(user, "artemis-staging")));
     }
 
     [Fact]

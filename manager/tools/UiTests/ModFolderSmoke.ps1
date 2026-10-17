@@ -29,8 +29,8 @@ Start-App $data $user
 $nested = "$user\mod\Nested Mod.mod"
 Check 'a nested mod folder with no .mod file gets one, pointing at the folder' ((Test-Path $nested) -and (Get-Content $nested -Raw) -match 'path="mod/outer/inner"')
 Check 'the mod folders that already had a .mod file get nothing more' (@(Get-ChildItem "$user\mod" -Filter *.mod).Count -eq 3)
-Check 'the missing mod is reported' ($null -ne (Wait-For { Find-Typed 'Review…' $btn }))
-Click-El (Find-Typed 'Review…' $btn)
+Check 'the missing mod is reported' ($null -ne (Wait-For { Find-Typed 'Review' $btn }))
+Click-El (Find-Typed 'Review' $btn)
 $dialog = Wait-For { Dialog-Window }
 Click-El (Find-Typed 'Recycle' $btn $dialog); Start-Sleep -Milliseconds 1200
 # the sandbox lives in the temp folder, so what was sent away is in the user's Recycle Bin; look it up, then take our own test file out again
@@ -44,7 +44,7 @@ foreach ($item in $binned) {
   Remove-Item -LiteralPath (Join-Path (Split-Path $item.Path) ('$I' + $leaf.Substring(2))) -Force -ErrorAction SilentlyContinue
 }
 Check 'the mods that have their files are untouched' ((Test-Path "$user\mod\Fine.mod") -and (Test-Path $nested))
-Check 'the report is gone once nothing is missing' ($null -eq (Find-Typed 'Review…' $btn))
+Check 'the report is gone once nothing is missing' ($null -eq (Find-Typed 'Review' $btn))
 Shot 'ModFolderSmoke.png'
 Stop-App
 if ($failed -gt 0) { "$failed check(s) failed"; exit 1 } else { 'All checks passed' }

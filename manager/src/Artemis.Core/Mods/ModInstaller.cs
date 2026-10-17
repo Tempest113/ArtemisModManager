@@ -48,37 +48,69 @@ public static class ModInstaller
         var target = Path.GetFullPath(Path.Combine(modDir, folder));
         var outer = Path.Combine(modDir, folder + ".mod");
         if (!target.StartsWith(modDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException(Loc.T("core.mod_name_unusable"));
-        if (Exists(userDir, folder))
-        {
-            if (!replace) throw new ArtemisException(Loc.T("core.mod_exists", ("folder", folder)));
-            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
-            if (File.Exists(outer)) File.Delete(outer);
-        }
+        if (Exists(userDir, folder) && !replace) throw new ArtemisException(Loc.T("core.mod_exists", ("folder", folder)));
 
+        // The new copy is unpacked beside the mod folder first (same volume, so the last step is a rename) and the installed one only steps
+        // aside once that worked: a failed install leaves the old mod exactly as it was, and never half a new one.
         var entries = Content(zip, prefix).ToList();
-        long total = 0;
+        var holding = Path.Combine(Path.GetFullPath(userDir), StagingFolder, Guid.NewGuid().ToString("N")[..8]);
+        var staging = Path.Combine(holding, "new");
+        var oldDir = Path.Combine(holding, "old");
+        var oldOuter = Path.Combine(holding, "old.mod");
+        bool movedDir = false, movedOuter = false, placed = false;
         try
         {
-            Directory.CreateDirectory(target);
+            Directory.CreateDirectory(staging);
+            long total = 0;
             foreach (var entry in entries)
             {
                 total += entry.Length;
                 if (total > MaxBytes) throw new ArtemisException(Loc.T("core.archive_too_big"));
-                var dest = Path.GetFullPath(Path.Combine(target, entry.Name.Replace('/', Path.DirectorySeparatorChar)));
-                if (!dest.StartsWith(target + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException(Loc.T("core.archive_escapes"));
+                var dest = Path.GetFullPath(Path.Combine(staging, entry.Name.Replace('/', Path.DirectorySeparatorChar)));
+                if (!dest.StartsWith(staging + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArtemisException(Loc.T("core.archive_escapes"));
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 entry.ExtractToFile(dest, overwrite: true);
             }
+
+            Directory.CreateDirectory(modDir);
+            if (Directory.Exists(target)) { Directory.Move(target, oldDir); movedDir = true; }
+            if (File.Exists(outer)) { File.Move(outer, oldOuter); movedOuter = true; }
+            Directory.Move(staging, target);
+            placed = true;
             File.WriteAllText(outer, OuterFile(descriptor, folder), new UTF8Encoding(false));
         }
         catch
         {
-            // Don't leave half a mod behind.
-            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
-            if (File.Exists(outer)) File.Delete(outer);
+            try
+            {
+                if (placed) { Directory.Delete(target, recursive: true); if (File.Exists(outer)) File.Delete(outer); }
+                if (movedDir) Directory.Move(oldDir, target);
+                if (movedOuter) File.Move(oldOuter, outer);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { holding = ""; } // the old mod is still in the holding folder; leave it there for the user
             throw;
         }
+        finally
+        {
+            if (holding.Length > 0) TryDelete(holding);
+            TryDeleteIfEmpty(Path.Combine(Path.GetFullPath(userDir), StagingFolder));
+        }
         return new InstallResult(folder, name, target, entries.Count, PluginManifestReader.Read(target));
+    }
+
+    /// <summary>Where a mod is unpacked before it replaces anything. It sits in the user folder, not in <c>mod</c>, so the game and the mod scan never see it.</summary>
+    private const string StagingFolder = "artemis-staging";
+
+    private static void TryDelete(string dir)
+    {
+        try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    private static void TryDeleteIfEmpty(string dir)
+    {
+        try { if (Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any()) Directory.Delete(dir); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>A new, empty script mod: its folder, a descriptor, and the .mod file. With <paramref name="plugin"/>, also a starting <c>modloader.json</c>.</summary>

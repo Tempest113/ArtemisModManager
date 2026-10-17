@@ -1,5 +1,3 @@
-Temp repo
-
 # Artemis
 
 A mod manager for Stellaris that also loads plugin (DLL) mods. **Artemis** is the manager. **Orion** is the small
@@ -16,7 +14,7 @@ Build Orion with `orion/build.bat`, then `python tests/orion/run_tests.py`. `man
   for daily use, without Irony's slow startup and slow scans.
 - A DLL mod is an ordinary Stellaris mod folder that also carries a `modloader.json` and a DLL. It is enabled and
   ordered in the playset like any script mod.
-- Orion reads the same `dlc_load.json` the game reads, so native and script mods can't get out of step. Each DLL loads
+- Orion reads the same `dlc_load.json` the game reads, so plugin and script mods can't get out of step. Each DLL loads
   only if you have approved its exact hash.
 - Nothing here modifies `stellaris.exe` on disk or ships game files.
 
@@ -37,9 +35,9 @@ docs/      design and decision records
   game files; `.gitignore` blocks them.
 - Per-build address data is derived from the game binary. It stays local until it has been slimmed and deliberately
   published (D15).
-- Native mods are programs and can do anything the user can. They load only when their mod is enabled and their hash is
+- Plugin mods are programs and can do anything the user can. They load only when their mod is enabled and their hash is
   approved (D06).
-- Unofficial community tool. Not affiliated with or endorsed by Paradox Interactive. Non-commercial; takedown requests
+- Unofficial community tool. Not affiliated with or endorsed by Paradox Interactive. Takedown requests
   are honoured.
 
 ## Reference projects (read-only, not dependencies)

@@ -584,15 +584,23 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AddSelectedToPlayset()
+    private void AddSelectedToPlayset() => SetRowsInPlayset(SelectedInstalled, on: true);
+
+    /// <summary>Puts several mods in the playset, or takes them out, in one go: one save and one refresh however many there are.</summary>
+    public void SetRowsInPlayset(IReadOnlyList<InstalledRowViewModel> rows, bool on)
     {
-        foreach (var row in SelectedInstalled) AddMod(row.Mod!);
+        var mods = rows.Where(r => r.Mod is not null).Select(r => r.Mod!).ToList();
+        foreach (var mod in mods)
+        {
+            if (on) AddMod(mod);
+            else RemoveMod(mod.Key);
+        }
         Renumber();
-        if (LoadOrder.Count > 0) RevealRow(LoadOrder[^1]);
+        if (on && LoadOrder.Count > 0) RevealRow(LoadOrder[^1]);
         PlaysetChanged();
-        foreach (var row in SelectedInstalled) row.Refresh();
+        foreach (var row in rows) row.Refresh();
         RefreshMembershipFilter();
-        AskAboutNewPlugins(SelectedInstalled.Select(r => r.Mod));
+        if (on) AskAboutNewPlugins(mods);
     }
 
     /// <summary>Takes mods and separators out of the playset (a separator's mods stay).</summary>

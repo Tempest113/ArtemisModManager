@@ -24,6 +24,9 @@ function Start-App($data, $user, $extra = @()) {
   $env:ARTEMIS_NO_WELCOME = '1'
   $p = Start-Process $script:exe -ArgumentList (@('--data-dir', "`"$data`"", '--user-dir', "`"$user`"") + $extra) -PassThru
   $script:proc = $p
+  # a script that stops on an error never reaches Stop-App: this takes the app down when PowerShell exits, so no sandbox instance is left running
+  $global:ArtemisTestProc = $p
+  Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { if ($global:ArtemisTestProc -and -not $global:ArtemisTestProc.HasExited) { $global:ArtemisTestProc.Kill() } } | Out-Null
   for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 250
     $p.Refresh()

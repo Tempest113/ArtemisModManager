@@ -551,6 +551,29 @@ def honest_mode_not_needed_or_unavailable(c: Case, root: Path, tools: Tools) -> 
     c.check(w.status()["honest"]["state"] == "notNeeded", "nothing counted, nothing to mount")
 
 
+def multi_file_partial_load(c: Case, root: Path, tools: Tools) -> None:
+    """A plugin of two files whose second file fails to load: the first has started and keeps running, so it must still count for the checksum (D64)."""
+    garbage = b"this is not a PE file"
+    w = honest_world(root, "partial", tools, [Mod("multi", "p.multi", files=("orion/a.dll", "orion/b.dll"), extra={"cosmetic": False})])
+    (w.user / "mod" / "multi" / "orion" / "b.dll").write_bytes(garbage)
+    trust = json.loads((w.data / "trust.json").read_text())
+    trust["plugins"]["multi"]["files"]["orion/b.dll"] = hashlib.sha256(garbage).hexdigest()
+    (w.data / "trust.json").write_text(json.dumps(trust))
+    out = run_honest(w)
+    c.game_ok(w.last)
+    e = w.entry("multi")
+    c.check(e and e["state"] == "failed" and "orion/b.dll" in e["detail"], f"the broken second file should fail the plugin: {e}")
+    c.check(e and "Before it, 1 file had already started" in e["detail"] and "checksum" in e["detail"], f"the detail should say the first file is still running and counts: {e}")
+    c.check(w.proof("multi") is not None, "the first file should have started")
+    text = fingerprint_of(out)
+    c.check(text is not None, "a file that started counts, so a fingerprint must be mounted")
+    if text:
+        c.check('plugin = { id = "p.multi"' in text and 'path = "orion/a.dll"' in text, f"the first file must be in the fingerprint: {text!r}")
+        c.check("orion/b.dll" not in text, "the file that failed did not start and is not counted")
+    st = w.status()["honest"]
+    c.check(st["state"] == "mounted" and st["plugins"] == 1, f"honest status: {st}")
+
+
 def honest_mode_user_choice(c: Case, root: Path, tools: Tools) -> None:
     w = honest_world(root, "honest-choice", tools, [Mod("claims", "p.claims", extra={"cosmetic": True}, counts=True),
                                                     Mod("honest", "p.honest", extra={"cosmetic": False}, counts=False)])
@@ -776,7 +799,7 @@ def export_parity(c: Case, root: Path, tools: Tools) -> None:
     c.check(version.startswith("Artemis"), f"the stub's company name must start with Artemis (that is how the manager recognises it): {version!r}")
 
 
-SCENARIOS = [export_parity, sampling_profiler, render_throttle, add_address_tool, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
+SCENARIOS = [export_parity, sampling_profiler, render_throttle, add_address_tool, game_start_and_unsupported, ini_to_build_tool, honest_mode_spike,honest_mode, honest_mode_not_needed_or_unavailable, multi_file_partial_load, honest_mode_user_choice, honest_mode_keeps_it_there, loads_and_forwards,other_processes_untouched, no_core, unknown_build, build_allowed_by_the_manager, trust_checks, switches, init_fails, init_crashes,
              order_and_dependencies, versions_and_api, manifests_and_paths, cache_is_checked]
 
 

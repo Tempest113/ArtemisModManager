@@ -328,8 +328,8 @@ public partial class MainWindow : Window
         menu.Items.Add(new Separator());
         var allIn = rows.All(r => r.InPlayset);
         menu.Items.Add(allIn
-            ? Item(Loc.T("win.remove_from_playset"), "IcoClose", () => { foreach (var r in rows.ToList()) r.InPlayset = false; })
-            : Item(Loc.T("win.add_to_playset"), "IcoAdd", () => { foreach (var r in rows.ToList()) r.InPlayset = true; }));
+            ? Item(Loc.T("win.remove_from_playset"), "IcoClose", () => _vm.SetRowsInPlayset(rows.ToList(), on: false))
+            : Item(Loc.T("win.add_to_playset"), "IcoAdd", () => _vm.SetRowsInPlayset(rows.ToList(), on: true)));
         if (single?.Mod is { } mod)
         {
             menu.Items.Add(new Separator());
@@ -458,8 +458,7 @@ public partial class MainWindow : Window
         // Enter adds the selected mods to the playset, or removes them if they are all in it.
         if (e.Key != Key.Enter || e.OriginalSource is TextBoxBase || _vm.SelectedInstalled.Count == 0) return;
         var rows = _vm.SelectedInstalled.ToList();
-        var on = !rows.All(r => r.InPlayset);
-        foreach (var row in rows) row.InPlayset = on;
+        _vm.SetRowsInPlayset(rows, on: !rows.All(r => r.InPlayset));
         e.Handled = true;
     }
 

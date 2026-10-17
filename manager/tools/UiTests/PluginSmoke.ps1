@@ -39,7 +39,7 @@ Check 'switching it off is saved in the playset and clears the marker' ((Get-Con
 
 Click-El (Find-Typed 'Plugins' $radio)
 Click-El (Wait-For { Find-Typed 'Fleet Plugin' ([System.Windows.Automation.ControlType]::ListItem) })
-Click-El (Wait-For { Find-Typed 'Approve…' $btn })
+Click-El (Wait-For { Find-Typed 'Approve' $btn })
 $dialog = Wait-For { Dialog-Window }
 Click-El (Find-Typed 'Approve' $btn $dialog); Start-Sleep -Milliseconds 800
 Check 'approving writes trust.json with the file hash' ((Get-Content "$data\trust.json" -Raw -ErrorAction SilentlyContinue) -match '"orion/f.dll": "[0-9a-f]{64}"')
@@ -55,10 +55,10 @@ Check 'saving writes plugin-settings.json with the chosen value and the plugin o
 
 if ($haveOrion) {
   # Orion's panel: refuses to touch a winmm.dll that isn't ours; installs once that is out of the way; allows the build; removes everything of ours.
-  Check 'the Plugins page says another winmm.dll is in the way and offers no install' ($null -ne (Find-El 'Another winmm.dll is in the Stellaris folder.') -and $null -eq (Find-Typed 'Install Orion…' $btn))
+  Check 'the Plugins page says another winmm.dll is in the way and offers no install' ($null -ne (Find-El 'Another winmm.dll is in the Stellaris folder.') -and $null -eq (Find-Typed 'Install Orion' $btn))
   Remove-Item "$game\winmm.dll"
   Click-El (Find-Typed 'Mods' $radio); Click-El (Find-Typed 'Plugins' $radio)                              # coming back to the page looks at the folder again
-  Click-El (Wait-For { Find-Typed 'Install Orion…' $btn })
+  Click-El (Wait-For { Find-Typed 'Install Orion' $btn })
   Click-El (Find-Typed 'Install' $btn (Wait-For { Dialog-Window })); Start-Sleep -Milliseconds 800
   $stub = Get-Item "$game\winmm.dll" -ErrorAction SilentlyContinue
   Check 'installing puts the stub in the game folder, saying Artemis as its company' ($null -ne $stub -and $stub.VersionInfo.CompanyName -like 'Artemis*')
@@ -79,7 +79,7 @@ if ($haveOrion) {
 
 Click-El (Find-Typed 'Mods' $radio)
 Click-El (Wait-For { Find-Typed 'Add a mod' $btn })
-Click-El (Wait-For { Find-Typed 'Create a mod…' $menu })
+Click-El (Wait-For { Find-Typed 'Create a mod' $menu })
 $dialog = Wait-For { Dialog-Window }
 $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $edit))).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('Created By Test')
 Click-El (Find-Typed 'OK' $btn $dialog); Start-Sleep -Milliseconds 1200

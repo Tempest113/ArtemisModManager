@@ -156,8 +156,9 @@ public static partial class PluginManifestReader
         switch (type)
         {
             case SettingType.Bool: def = hasDefault && d.ValueKind == JsonValueKind.True; break;
-            case SettingType.Int: def = hasDefault && d.ValueKind == JsonValueKind.Number && d.TryGetInt64(out var l) ? l : 0L; break;
-            case SettingType.Float: def = hasDefault && d.ValueKind == JsonValueKind.Number ? d.GetDouble() : 0.0; break;
+            // No default means 0, moved into [min, max] so a setting with only a range is not refused for a default nobody wrote.
+            case SettingType.Int: def = hasDefault && d.ValueKind == JsonValueKind.Number && d.TryGetInt64(out var l) ? l : (long)Math.Ceiling(Math.Clamp(0.0, min ?? double.MinValue, max ?? double.MaxValue)); break;
+            case SettingType.Float: def = hasDefault && d.ValueKind == JsonValueKind.Number ? d.GetDouble() : Math.Clamp(0.0, min ?? double.MinValue, max ?? double.MaxValue); break;
             case SettingType.Enum: def = hasDefault && d.ValueKind == JsonValueKind.String ? d.GetString()! : options[0].Value; break;
             default: def = hasDefault && d.ValueKind == JsonValueKind.String ? d.GetString()! : ""; break;
         }

@@ -410,19 +410,29 @@ void Process(const std::string& key, const std::wstring& folder, const std::stri
   PluginHost* host = NewHost(key);
   const Json* values = mine->Get("values");
   host->values = values && values->type == Json::Object ? values : nullptr;
+  // A file that has started stays running (nothing is unloaded), so the files before a failing one still count for the checksum (D64).
+  const auto countFiles = [&](size_t n) {
+    if (!counts || n == 0) return;
+    HonestPlugin p{m.id, m.version, {}};
+    for (size_t i = 0; i < n; ++i) p.files.push_back({m.files[i], hashes[i]});
+    g->counted.push_back(std::move(p));
+  };
   for (size_t i = 0; i < m.files.size(); ++i) {
     WriteMarker(key, m.id, m.files[i]);
     const char* reason = "error";
-    const std::string problem = LoadFile(host, m.files[i], bytes[i], hashes[i], reason);
-    if (!problem.empty()) { Record(key, m.id, std::strcmp(reason, "buildUnsupported") == 0 ? "skipped" : "failed", reason, problem); return; }
+    std::string problem = LoadFile(host, m.files[i], bytes[i], hashes[i], reason);
+    if (!problem.empty()) {
+      countFiles(i);
+      if (i > 0)
+        problem += " Before it, " + std::to_string(i) + (i == 1 ? " file" : " files") + " had already started and keep running" +
+                   (counts ? ", so they still count for the game's checksum." : ".");
+      Record(key, m.id, std::strcmp(reason, "buildUnsupported") == 0 ? "skipped" : "failed", reason, problem);
+      return;
+    }
   }
   g->loadedIds.insert(m.id);
   g->loadedIncompatible[m.id] = m.incompatible;
-  if (counts) {
-    HonestPlugin p{m.id, m.version, {}};
-    for (size_t i = 0; i < m.files.size(); ++i) p.files.push_back({m.files[i], hashes[i]});
-    g->counted.push_back(std::move(p));
-  }
+  countFiles(m.files.size());
   Record(key, m.id, "loaded", "", "");
 }
 
